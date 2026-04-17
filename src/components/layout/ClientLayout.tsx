@@ -43,14 +43,25 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         const { data } = await supabase.from('entities').select('*').limit(1);
         
         if (!data || data.length === 0) {
-          // إذا المستخدم اختار التخطي مسبقاً، لا نرجعه للإعداد
+          // إذا المستخدم اختار التخطي مسبقاً، ننشئ له شركة افتراضية لكي يعمل النظام
           const skipped = typeof window !== 'undefined' && localStorage.getItem('setup_skipped');
-          if (!skipped) {
+          if (skipped) {
+            try {
+              const { data: newEnt } = await supabase.from('entities').insert({
+                user_id: session.user.id,
+                name: 'الشركة الافتراضية',
+                status: 'active'
+              }).select().single();
+              if (newEnt) {
+                setActiveEntity({ name: newEnt.name, short: 'افتراضي' });
+              }
+            } catch (err) { console.error('Failed to auto-create entity', err); }
+          } else {
             router.push('/setup');
           }
         } else {
           // إذا كان لديه شركة ولم نفعلها في المتجر العام، نفعل الأولى
-          if (!activeEntity.name) {
+          if (!activeEntity.name || activeEntity.name === 'عاصمة المجد للتجارة') {
             setActiveEntity({ name: data[0].name, short: data[0].name.substring(0, 3) });
           }
           // إذا كان تخطى سابقاً والآن عنده شركة، امسح العلامة

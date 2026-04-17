@@ -28,7 +28,7 @@ export const useStore = create<AppState>((set) => ({
   sidebarCollapsed: false,
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   
-  activeEntity: { name: 'عاصمة المجد للتجارة', short: 'AMT' },
+  activeEntity: { name: '', short: '' },
   setActiveEntity: (entity) => set({ activeEntity: entity }),
   
   showEntitySwitcher: false,
