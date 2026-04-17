@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, Building2, User, Loader2, Sparkles, Upload, FileText, CheckCircle2 } from 'lucide-react';
 import { createCustomer } from '@/lib/supabase/services';
 import { createClient } from '@/lib/supabase/client';
@@ -27,6 +27,7 @@ export function QuickAddCustomerModal({ isOpen, onClose, initialName, initialAiM
   const [loading, setLoading] = useState(false);
   const [isAiMode, setIsAiMode] = useState(initialAiMode);
   const [aiAnalysisStep, setAiAnalysisStep] = useState(0); // 0: upload, 1: scanning, 2: success
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync AI mode when opened
   React.useEffect(() => {
@@ -37,6 +38,12 @@ export function QuickAddCustomerModal({ isOpen, onClose, initialName, initialAiM
   }, [isOpen, initialAiMode]);
 
   if (!isOpen) return null;
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      simulateAiExtraction();
+    }
+  };
 
   const simulateAiExtraction = () => {
     setAiAnalysisStep(1); // scanning
@@ -116,8 +123,15 @@ export function QuickAddCustomerModal({ isOpen, onClose, initialName, initialAiM
             {aiAnalysisStep === 0 && (
               <div 
                 className="border-2 border-dashed border-border hover:border-primary/50 rounded-xl p-8 text-center cursor-pointer bg-muted/20 hover:bg-muted/40 transition-colors"
-                onClick={simulateAiExtraction}
+                onClick={() => fileInputRef.current?.click()}
               >
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept=".pdf,image/png,image/jpeg,image/jpg" 
+                  onChange={handleFileSelect} 
+                />
                 <div className="w-12 h-12 bg-gradient-to-br from-[#FFE2A8] to-[#E8B96B] rounded-full flex items-center justify-center mx-auto mb-3">
                   <Upload className="w-6 h-6 text-[#7A5A1A]" />
                 </div>

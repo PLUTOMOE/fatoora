@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload, Sparkles, Edit, CheckCircle2, Check, Loader2, Zap, Shield, FileImage, FileType, AlertCircle, Receipt, ScrollText } from 'lucide-react';
 import { Field } from '@/components/ui/Field';
@@ -9,6 +9,13 @@ export default function AIReader() {
   const [step, setStep] = useState(1);
   const [subStep, setSubStep] = useState(0); // 0 to 4
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setStep(2);
+    }
+  };
 
   // Auto-progress simulation for step 2
   React.useEffect(() => {
@@ -88,7 +95,14 @@ export default function AIReader() {
               <h2 className="text-[18px] font-semibold text-foreground mb-2">ارفع عرض السعر</h2>
               <p className="text-[13px] text-muted-foreground mb-6">يدعم PDF أو صور - حد أقصى 10MB</p>
               
-              <div onClick={() => setStep(2)} className="border-2 border-dashed border-border hover:border-[#1A1A1A] rounded-lg p-10 cursor-pointer bg-background hover:bg-card transition-colors">
+              <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-border hover:border-[#1A1A1A] rounded-lg p-10 cursor-pointer bg-background hover:bg-card transition-colors">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept=".pdf,image/png,image/jpeg,image/jpg" 
+                  onChange={handleFileSelect} 
+                />
                 <Upload className="w-10 h-10 text-muted-foreground/80 mx-auto mb-3" />
                 <div className="text-[14px] font-medium text-foreground mb-1">اضغط أو اسحب الملف هنا</div>
                 <div className="text-[11px] text-muted-foreground/80">PDF, JPG, PNG حتى 10MB</div>

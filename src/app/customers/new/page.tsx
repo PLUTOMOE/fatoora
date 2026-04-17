@@ -13,6 +13,7 @@ export default function NewCustomerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAiMode, setIsAiMode] = useState(false);
   const [aiAnalysisStep, setAiAnalysisStep] = useState(0);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -22,6 +23,12 @@ export default function NewCustomerPage() {
     email: '',
     tax_number: ''
   });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      simulateAiExtraction();
+    }
+  };
 
   const simulateAiExtraction = () => {
     setAiAnalysisStep(1); // scanning
@@ -113,8 +120,15 @@ export default function NewCustomerPage() {
               {aiAnalysisStep === 0 && (
                 <div 
                   className="border-2 border-dashed border-[#E8B96B]/50 hover:border-[#E8B96B] rounded-xl p-12 text-center cursor-pointer bg-background transition-all hover:shadow-md"
-                  onClick={simulateAiExtraction}
+                  onClick={() => fileInputRef.current?.click()}
                 >
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept=".pdf,image/png,image/jpeg,image/jpg" 
+                    onChange={handleFileSelect} 
+                  />
                   <div className="w-16 h-16 bg-gradient-to-br from-[#FFE2A8] to-[#E8B96B] rounded-2xl flex items-center justify-center mx-auto mb-4 custom-shadow">
                     <Upload className="w-8 h-8 text-[#7A5A1A]" />
                   </div>
