@@ -44,7 +44,6 @@ export function Sidebar() {
         { icon: Building2, label: t('sidebar.entities'), href: '/entities' },
         { icon: BarChart3, label: t('sidebar.reports'), href: '/reports' },
         { icon: Settings, label: t('sidebar.settings'), href: '/settings' },
-        { icon: PenLine, label: 'إعدادات الفوترة', href: '/settings/invoicing' },
       ]
     }
   ];

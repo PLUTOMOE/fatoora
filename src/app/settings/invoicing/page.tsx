@@ -72,7 +72,7 @@ export default function InvoicingSettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <button onClick={() => router.back()} className="hover:text-foreground transition-colors">الإعدادات</button>
+            <button onClick={() => router.push('/settings')} className="hover:text-foreground transition-colors">الإعدادات</button>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-foreground font-medium">إعدادات الفوترة</span>
           </div>
