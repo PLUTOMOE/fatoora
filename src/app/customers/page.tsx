@@ -2,19 +2,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Download, Plus, Search, Users, MoreHorizontal, Loader2 } from 'lucide-react';
+import { Download, Plus, Search, Users, MoreHorizontal, Loader2, Sparkles } from 'lucide-react';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { useStore } from '@/store/useStore';
 import { getCustomers, createCustomer } from '@/lib/supabase/services';
+import { QuickAddCustomerModal } from '@/components/ui/QuickAddCustomerModal';
 
 export default function CustomersList() {
   const { t } = useTranslation();
   const { activeEntity } = useStore();
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({ name: '', type: 'company', email: '', phone: '', city: '' });
+  const [modalMode, setModalMode] = useState<'none' | 'normal' | 'ai'>('none');
 
   useEffect(() => {
     if (activeEntity.name) {
@@ -38,24 +37,6 @@ export default function CustomersList() {
     setLoading(false);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      const { data: ent } = await supabase.from('entities').select('id').eq('name', activeEntity.name).single();
-      if (!ent) { alert('يرجى اختيار الكيان أولاً'); return; }
-      await createCustomer({ ...newCustomer, entity_id: ent.id });
-      setShowModal(false);
-      setNewCustomer({ name: '', type: 'company', email: '', phone: '', city: '' });
-      fetchCustomers();
-    } catch {
-      alert('حدث خطأ أثناء الحفظ');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   if (loading) {
     return <div className="flex h-60 items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/80" /></div>;
@@ -76,9 +57,17 @@ export default function CustomersList() {
             <Download className="w-3.5 h-3.5" />
             <span>تصدير CSV</span>
           </button>
-          <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 h-8 px-3 bg-primary text-primary-foreground rounded-md text-[12px] font-medium hover:opacity-90">
+          <button onClick={() => setModalMode('normal')} className="flex items-center gap-1.5 h-8 px-3 bg-primary text-primary-foreground rounded-md text-[12px] font-medium hover:opacity-90">
             <Plus className="w-3.5 h-3.5" />
-            <span>{t('pages.customers.add')}</span>
+            <span className="hidden sm:inline">{t('pages.customers.add')}</span>
+          </button>
+          
+          <button 
+            onClick={() => setModalMode('ai')} 
+            className="flex items-center gap-1.5 h-8 px-3 bg-gradient-to-r from-[#FFE2A8] to-[#E8B96B] hover:opacity-90 text-[#7A5A1A] rounded-md text-[12px] font-bold shadow-sm transition-opacity"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">إضافة بملف (AI)</span>
           </button>
         </div>
       </div>
@@ -105,7 +94,7 @@ export default function CustomersList() {
             <div className="flex flex-col items-center justify-center h-60 text-muted-foreground">
               <Users className="w-8 h-8 text-muted-foreground/40 mb-3" />
               <p className="text-[13px]">لا يوجد عملاء مضافين في الكيان الحالي</p>
-              <button onClick={() => setShowModal(true)} className="mt-4 text-[12px] text-[#5B5BD6] font-medium hover:underline">
+              <button onClick={() => setModalMode('normal')} className="mt-4 text-[12px] text-[#5B5BD6] font-medium hover:underline">
                 أضف عميلك الأول الآن
               </button>
             </div>
@@ -154,51 +143,16 @@ export default function CustomersList() {
       </div>
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-[440px] rounded-xl shadow-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold text-foreground">إضافة عميل جديد</h2>
-              <button onClick={() => setShowModal(false)} className="text-muted-foreground/80 hover:text-foreground text-lg leading-none">✕</button>
-            </div>
-            <form onSubmit={handleCreate} className="p-5 space-y-4">
-              <div>
-                <label className="block text-[12px] font-medium text-foreground mb-1.5">اسم العميل أو الجهة</label>
-                <input required value={newCustomer.name} onChange={e => setNewCustomer({...newCustomer, name: e.target.value})} type="text" className="w-full h-10 px-3 bg-background border border-border rounded-md text-[13px] focus:outline-none focus:border-[#5B5BD6]" placeholder="مثال: الواحة للتجارة" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12px] font-medium text-foreground mb-1.5">النوع</label>
-                  <select value={newCustomer.type} onChange={e => setNewCustomer({...newCustomer, type: e.target.value})} className="w-full h-10 px-3 bg-background border border-border rounded-md text-[13px] focus:outline-none focus:border-[#5B5BD6]">
-                    <option value="company">شركة / مؤسسة</option>
-                    <option value="individual">فرد</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[12px] font-medium text-foreground mb-1.5">{t('pages.customers.city')}</label>
-                  <input value={newCustomer.city} onChange={e => setNewCustomer({...newCustomer, city: e.target.value})} type="text" className="w-full h-10 px-3 bg-background border border-border rounded-md text-[13px]" placeholder="الرياض" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12px] font-medium text-foreground mb-1.5">{t('pages.customers.email')}</label>
-                  <input value={newCustomer.email} onChange={e => setNewCustomer({...newCustomer, email: e.target.value})} type="email" className="w-full h-10 px-3 bg-background border border-border rounded-md text-[13px]" placeholder="mail@example.com" />
-                </div>
-                <div>
-                  <label className="block text-[12px] font-medium text-foreground mb-1.5">رقم الجوال</label>
-                  <input value={newCustomer.phone} onChange={e => setNewCustomer({...newCustomer, phone: e.target.value})} type="tel" className="w-full h-10 px-3 bg-background border border-border rounded-md text-[13px] font-mono" placeholder="05XXXXXXXX" />
-                </div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 h-10 bg-card border border-border text-muted-foreground hover:bg-muted rounded-md text-[13px] font-medium">{t('common.cancel')}</button>
-                <button type="submit" disabled={isSubmitting} className="flex-1 h-10 bg-primary text-primary-foreground rounded-md text-[13px] font-medium disabled:opacity-60">
-                  {isSubmitting ? 'جاري الحفظ...' : 'حفظ العميل'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <QuickAddCustomerModal 
+        isOpen={modalMode !== 'none'}
+        initialAiMode={modalMode === 'ai'}
+        onClose={() => setModalMode('none')}
+        initialName=""
+        onSuccess={() => {
+          fetchCustomers();
+          setModalMode('none');
+        }}
+      />
     </div>
   );
 }
