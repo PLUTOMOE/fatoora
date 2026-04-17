@@ -33,24 +33,23 @@ export function CustomerAutocomplete({ value, onChange, onOpenCreateNew }: Custo
     setQuery(value);
   }, [value]);
 
-  useEffect(() => {
+  const fetchAllCustomers = async () => {
     if (!activeEntity?.name) return;
-    
-    // Fetch customers once
-    const fetchAllCustomers = async () => {
-      setLoading(true);
-      try {
-        const supabase = createClient();
-        const { data: ent } = await supabase.from('entities').select('id').eq('name', activeEntity.name).single();
-        if (ent) {
-          const data = await getCustomers(ent.id);
-          setCustomers(data || []);
-        }
-      } catch (e) {
-        console.error(e);
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: ent } = await supabase.from('entities').select('id').eq('name', activeEntity.name).single();
+      if (ent) {
+        const data = await getCustomers(ent.id);
+        setCustomers(data || []);
       }
-      setLoading(false);
-    };
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
     fetchAllCustomers();
   }, [activeEntity?.name]);
 
@@ -85,7 +84,16 @@ export function CustomerAutocomplete({ value, onChange, onOpenCreateNew }: Custo
             setIsOpen(true);
             onChange(null, e.target.value); // Reset exact selection until clicked
           }}
-          onFocus={() => setIsOpen(true)}
+          onClick={() => {
+            if (!isOpen) {
+              setIsOpen(true);
+              fetchAllCustomers();
+            }
+          }}
+          onFocus={() => {
+            setIsOpen(true);
+            fetchAllCustomers();
+          }}
         />
       </div>
 
