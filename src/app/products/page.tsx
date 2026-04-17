@@ -2,13 +2,16 @@
 
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Download, Plus, Search, Package, MoreHorizontal, Loader2 } from 'lucide-react';
+import { Download, Plus, Search, Package, MoreHorizontal, Loader2, ChevronRight } from 'lucide-react';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { useStore } from '@/store/useStore';
 import { getProducts, createProduct } from '@/lib/supabase/services';
 
+import { useRouter } from 'next/navigation';
+
 export default function ProductsList() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { activeEntity } = useStore();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,9 +79,17 @@ export default function ProductsList() {
   return (
     <div className="space-y-5">
       <div className="flex items-end justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-[24px] font-semibold text-foreground tracking-tight">t('pages.products.title')</h1>
-          <p className="text-[13px] text-muted-foreground mt-1">{products.length === 0 ? 'لا يوجد منتجات بعد' : `${products.length} منتج مسجل`}</p>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => router.back()} 
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-[24px] font-semibold text-foreground tracking-tight">{t('pages.products.title')}</h1>
+            <p className="text-[13px] text-muted-foreground mt-1">{products.length === 0 ? 'لا يوجد منتجات بعد' : `${products.length} منتج مسجل`}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1.5 h-8 px-3 bg-card border border-border rounded-md text-[12px] text-foreground hover:border-border/80">

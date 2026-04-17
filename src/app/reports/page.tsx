@@ -1,17 +1,27 @@
 "use client";
 
 import React from 'react';
-import { BarChart3, TrendingUp, Download, Calendar } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { BarChart3, TrendingUp, Download, Calendar, ChevronRight } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export default function Reports() {
   const { t } = useTranslation();
+  const router = useRouter();
   return (
     <div className="space-y-5">
       <div className="flex items-end justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-[24px] font-semibold text-foreground tracking-tight">{t('pages_extra.reports.title')}</h1>
-          <p className="text-[13px] text-muted-foreground mt-1">{t('pages_extra.reports.subtitle')}</p>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => router.back()} 
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-[24px] font-semibold text-foreground tracking-tight">{t('pages_extra.reports.title')}</h1>
+            <p className="text-[13px] text-muted-foreground mt-1">{t('pages_extra.reports.subtitle')}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1.5 h-8 px-3 bg-primary hover:bg-primary text-primary-foreground rounded-md text-[12px] font-medium">

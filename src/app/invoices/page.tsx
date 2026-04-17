@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useRouter } from 'next/navigation';
-import { Download, Plus, Search, Receipt, MoreHorizontal, Loader2 } from 'lucide-react';
+import { Download, Plus, Search, Receipt, MoreHorizontal, Loader2, ChevronRight } from 'lucide-react';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { useStore } from '@/store/useStore';
@@ -47,9 +47,17 @@ export default function InvoicesList() {
   return (
     <div className="space-y-5">
       <div className="flex items-end justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-[24px] font-semibold text-foreground tracking-tight">{t('pages.invoices.title')}</h1>
-          <p className="text-[13px] text-muted-foreground mt-1">{data.length === 0 ? 'لا يوجد فواتير بعد' : `${data.length} فاتورة مسجلة`}</p>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => router.back()} 
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-[24px] font-semibold text-foreground tracking-tight">{t('pages.invoices.title')}</h1>
+            <p className="text-[13px] text-muted-foreground mt-1">{data.length === 0 ? 'لا يوجد فواتير بعد' : `${data.length} فاتورة مسجلة`}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1.5 h-8 px-3 bg-card border border-border rounded-md text-[12px] hover:border-border/80">

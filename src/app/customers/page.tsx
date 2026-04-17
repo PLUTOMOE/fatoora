@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Download, Plus, Search, Users, MoreHorizontal, Loader2, Sparkles } from 'lucide-react';
+import { Download, Plus, Search, Users, MoreHorizontal, Loader2, Sparkles, ChevronRight } from 'lucide-react';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { useStore } from '@/store/useStore';
 import { getCustomers, createCustomer } from '@/lib/supabase/services';
@@ -46,11 +46,19 @@ export default function CustomersList() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">{t('pages.customers.title')}</h1>
-          <p className="text-[13px] text-muted-foreground mt-1">
-            {customers.length === 0 ? 'لا يوجد عملاء بعد' : `${customers.length} عميل في قاعدة البيانات`}
-          </p>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => router.back()} 
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground tracking-tight">{t('pages.customers.title')}</h1>
+            <p className="text-[13px] text-muted-foreground mt-1">
+              {customers.length === 0 ? 'لا يوجد عملاء بعد' : `${customers.length} عميل في قاعدة البيانات`}
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button className="flex items-center gap-1.5 h-8 px-3 bg-card border border-border rounded-md text-[12px] text-foreground hover:border-foreground/20">

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useRouter } from 'next/navigation';
-import { Download, Search, ScrollText, Filter, MoreHorizontal, Loader2, Sparkles } from 'lucide-react';
+import { Download, Search, ScrollText, Filter, MoreHorizontal, Loader2, Sparkles, ChevronRight } from 'lucide-react';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useStore } from '@/store/useStore';
 import { getInvoices } from '@/lib/supabase/services';
@@ -45,9 +45,17 @@ export default function QuotationsList() {
   return (
     <div className="space-y-4 max-w-6xl mx-auto">
       <div className="flex items-end justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-[24px] font-semibold text-foreground tracking-tight">{t('pages.quotations.title')}</h1>
-          <p className="text-[13px] text-muted-foreground mt-1">{data.length === 0 ? 'لا يوجد عروض أسعار بعد' : `${data.length} عرض سعر مسجل`}</p>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => router.back()} 
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-[24px] font-semibold text-foreground tracking-tight">{t('pages.quotations.title')}</h1>
+            <p className="text-[13px] text-muted-foreground mt-1">{data.length === 0 ? 'لا يوجد عروض أسعار بعد' : `${data.length} عرض سعر مسجل`}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => router.push('/ai-reader')} className="flex items-center justify-center gap-2 h-9 px-4 bg-card border-2 border-border hover:border-[#E8B96B] hover:bg-[#FFFAF0] text-foreground rounded-lg text-[12px] font-semibold transition-all group shadow-sm">
