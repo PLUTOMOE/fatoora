@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { 
   Home, Inbox, ScrollText, Receipt, Sparkles, 
   Users, Package, Bookmark, Building2, BarChart3, 
-  Settings, ChevronsUpDown, Plus, ChevronRight 
+  Settings, ChevronsUpDown, Plus, ChevronRight, PenLine
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -44,6 +44,7 @@ export function Sidebar() {
         { icon: Building2, label: t('sidebar.entities'), href: '/entities' },
         { icon: BarChart3, label: t('sidebar.reports'), href: '/reports' },
         { icon: Settings, label: t('sidebar.settings'), href: '/settings' },
+        { icon: PenLine, label: 'إعدادات الفوترة', href: '/settings/invoicing' },
       ]
     }
   ];

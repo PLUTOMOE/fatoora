@@ -15,6 +15,7 @@ export default function InvoicesList() {
   const { activeEntity } = useStore();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
 
   useEffect(() => {
     if (activeEntity.name) {
@@ -55,10 +56,37 @@ export default function InvoicesList() {
             <Download className="w-3.5 h-3.5" />
             <span>تصدير</span>
           </button>
-          <button onClick={() => alert('سيتم تفعيل صفحة إضافة الفاتورة لاحقاً')} className="flex items-center gap-1.5 h-8 px-3 bg-primary hover:bg-primary text-primary-foreground rounded-md text-[12px] font-medium">
-            <Plus className="w-3.5 h-3.5" />
-            <span>t('pages.invoices.new')</span>
-          </button>
+          <div className="relative">
+            <button 
+              onClick={() => setShowCreateMenu(!showCreateMenu)} 
+              className="flex items-center gap-1.5 h-8 px-3 bg-primary hover:bg-primary text-primary-foreground rounded-md text-[12px] font-medium transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{t('pages.invoices.new')}</span>
+            </button>
+            
+            {showCreateMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowCreateMenu(false)}></div>
+                <div className="absolute top-10 left-0 w-48 bg-card border border-border shadow-lg rounded-lg outline-none z-50 overflow-hidden py-1">
+                  <button 
+                    onClick={() => { setShowCreateMenu(false); router.push('/invoices/new'); }}
+                    className="w-full text-right px-4 py-2.5 text-[12px] text-foreground hover:bg-muted font-medium flex items-center gap-2"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    فاتورة جديدة كلياً
+                  </button>
+                  <button 
+                    onClick={() => { setShowCreateMenu(false); alert('سيتم فتح نافذة اختيار عرض السعر'); }}
+                    className="w-full text-right px-4 py-2.5 text-[12px] text-foreground hover:bg-muted font-medium flex items-center gap-2"
+                  >
+                    <Receipt className="w-3.5 h-3.5" />
+                    من عرض سعر موجود
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
