@@ -88,7 +88,7 @@ function NewCustomerContent() {
         }));
         router.push(`${redirectCallback}?newCustomerData=${customerPayload}`);
       } else {
-        router.push(redirectCallback);
+        router.push(redirectCallback + '?v=' + Date.now());
       }
       
     } catch (err) {

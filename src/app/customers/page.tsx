@@ -1,27 +1,20 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Download, Plus, Search, Users, MoreHorizontal, Loader2, Sparkles, ChevronRight } from 'lucide-react';
 import { FilterButton } from '@/components/ui/FilterButton';
 import { useStore } from '@/store/useStore';
 import { getCustomers, createCustomer } from '@/lib/supabase/services';
 
-export default function CustomersList() {
+function CustomersListContent() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { activeEntity } = useStore();
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (activeEntity.name) {
-      fetchCustomers();
-    } else {
-      setLoading(false);
-    }
-  }, [activeEntity]);
 
   const fetchCustomers = async () => {
     setLoading(true);
@@ -36,6 +29,14 @@ export default function CustomersList() {
     } catch (e) { console.error(e); }
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (activeEntity.name) {
+      fetchCustomers();
+    } else {
+      setLoading(false);
+    }
+  }, [activeEntity, searchParams]);
 
 
   if (loading) {
@@ -150,5 +151,15 @@ export default function CustomersList() {
         </div>
       </div>
     </div>
+  );
+}
+
+import { Suspense } from 'react';
+
+export default function CustomersList() {
+  return (
+    <Suspense fallback={<div className="flex h-60 items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/80" /></div>}>
+      <CustomersListContent />
+    </Suspense>
   );
 }
