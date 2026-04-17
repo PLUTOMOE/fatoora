@@ -9,7 +9,6 @@ import {
 import { useTheme } from 'next-themes';
 import { useStore } from '@/store/useStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Languages } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
@@ -55,14 +54,6 @@ export function TopBar() {
           </button>
 
           <div className="w-px h-5 bg-border mx-1.5"></div>
-
-          <button 
-            onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-            className="flex items-center gap-1.5 h-8 px-2.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors text-[12px] font-medium"
-          >
-            <Languages className="w-4 h-4" />
-            <span>{language === 'ar' ? 'EN' : 'AR'}</span>
-          </button>
 
 
           <button 
