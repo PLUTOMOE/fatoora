@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useStore } from '@/store/useStore';
 import { createCustomer } from '@/lib/supabase/services';
 import { createClient } from '@/lib/supabase/client';
@@ -9,14 +9,20 @@ import { UserPlus, MapPin, ChevronDown, Phone, Mail, Check, Sparkles, Upload, Lo
 
 export default function NewCustomerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefillName = searchParams.get('name') || '';
+  const redirectCallback = searchParams.get('callback') || '/customers';
+
+  const initAiMode = searchParams.get('mode') === 'ai';
+
   const { activeEntity } = useStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAiMode, setIsAiMode] = useState(false);
+  const [isAiMode, setIsAiMode] = useState(initAiMode);
   const [aiAnalysisStep, setAiAnalysisStep] = useState(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
-    name: '',
+    name: prefillName,
     type: '',
     city: '',
     phone: '',
@@ -74,7 +80,7 @@ export default function NewCustomerPage() {
         entity_id: ent.id,
       });
 
-      router.push('/customers');
+      router.push(redirectCallback);
     } catch (err) {
       console.error(err);
       alert('حدث خطأ أثناء حفظ العميل');

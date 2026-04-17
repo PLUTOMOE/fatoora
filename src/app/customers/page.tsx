@@ -7,7 +7,6 @@ import { Download, Plus, Search, Users, MoreHorizontal, Loader2, Sparkles } from
 import { FilterButton } from '@/components/ui/FilterButton';
 import { useStore } from '@/store/useStore';
 import { getCustomers, createCustomer } from '@/lib/supabase/services';
-import { QuickAddCustomerModal } from '@/components/ui/QuickAddCustomerModal';
 
 export default function CustomersList() {
   const { t } = useTranslation();
@@ -15,7 +14,6 @@ export default function CustomersList() {
   const { activeEntity } = useStore();
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalMode, setModalMode] = useState<'none' | 'normal' | 'ai'>('none');
 
   useEffect(() => {
     if (activeEntity.name) {
@@ -65,7 +63,7 @@ export default function CustomersList() {
           </button>
           
           <button 
-            onClick={() => setModalMode('ai')} 
+            onClick={() => router.push('/customers/new?mode=ai')} 
             className="flex items-center gap-1.5 h-8 px-3 bg-gradient-to-r from-[#FFE2A8] to-[#E8B96B] hover:opacity-90 text-[#7A5A1A] rounded-md text-[12px] font-bold shadow-sm transition-opacity"
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -143,18 +141,6 @@ export default function CustomersList() {
           )}
         </div>
       </div>
-
-      {/* Modal */}
-      <QuickAddCustomerModal 
-        isOpen={modalMode !== 'none'}
-        initialAiMode={modalMode === 'ai'}
-        onClose={() => setModalMode('none')}
-        initialName=""
-        onSuccess={() => {
-          fetchCustomers();
-          setModalMode('none');
-        }}
-      />
     </div>
   );
 }

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { CustomerAutocomplete, CustomerData } from '@/components/ui/CustomerAutocomplete';
-import { QuickAddCustomerModal } from '@/components/ui/QuickAddCustomerModal';
 
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Save, LayoutTemplate, Eye, X, ArrowRight, Printer, Plus, Trash2, GripVertical } from 'lucide-react';
@@ -37,10 +36,6 @@ export default function NewInvoicePage() {
   const [items, setItems] = useState<InvoiceItem[]>([
     { name: '', description: '', qty: 1, price: 0, tax_rate: 15 }
   ]);
-
-  // Modal State
-  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
-  const [newCustomerNameQuery, setNewCustomerNameQuery] = useState('');
 
   useEffect(() => {
     const stored = localStorage.getItem('invoice_settings');
@@ -210,8 +205,7 @@ export default function NewInvoicePage() {
                   }
                 }}
                 onOpenCreateNew={(nameQuery) => {
-                  setNewCustomerNameQuery(nameQuery);
-                  setShowAddCustomerModal(true);
+                  router.push(`/customers/new?name=${encodeURIComponent(nameQuery)}&callback=/invoices/new`);
                 }}
               />
             </div>
@@ -365,20 +359,6 @@ export default function NewInvoicePage() {
         </div>
 
       </div>
-
-      <QuickAddCustomerModal 
-        isOpen={showAddCustomerModal}
-        onClose={() => setShowAddCustomerModal(false)}
-        initialName={newCustomerNameQuery}
-        onSuccess={(customer) => {
-          setCustomerInfo({
-            name: customer.name,
-            tax_number: customer.tax_number || '',
-            address: customer.address || ''
-          });
-          setShowAddCustomerModal(false);
-        }}
-      />
     </div>
   );
 }
