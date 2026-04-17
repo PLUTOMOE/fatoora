@@ -80,19 +80,7 @@ export function Sidebar() {
         </button>
       </div>
 
-      {!sidebarCollapsed && (
-        <div className="px-3 pb-2">
-          <button className="w-full flex items-center justify-between px-2.5 py-1.5 bg-[#F8F8F8] hover:bg-[#F0F0F0] border border-border rounded-md text-[13px] text-muted-foreground transition-colors">
-            <span className="flex items-center gap-2">
-              <Plus className="w-3.5 h-3.5" />
-              <span>إنشاء جديد</span>
-            </span>
-            <kbd className="text-[10px] text-muted-foreground/80 font-mono bg-card border border-border px-1 py-0.5 rounded">⌘ N</kbd>
-          </button>
-        </div>
-      )}
-
-      <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-3">
+      <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-3 pt-2">
         {sections.map((section, idx) => (
           <div key={idx}>
             {section.label && !sidebarCollapsed && (
