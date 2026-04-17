@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
+/* Enable class-based dark mode for Tailwind v4 */
+@variant dark (&:is(.dark *));
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -108,3 +111,27 @@ button:focus-visible { outline-offset: 1px; }
 
 /* Smooth transitions */
 button, a, input, select { transition: all 0.12s ease; }
+
+/* ====== Login Page Styles ====== */
+.glass-panel {
+  background: rgba(40, 48, 68, 0.4);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(199, 196, 217, 0.1);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #f2eeff 0%, #c2c1ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.cinematic-shadow {
+  box-shadow: 0 32px 64px -12px rgba(19, 27, 46, 0.8), 0 0 40px rgba(61, 50, 230, 0.15);
+}
+
+@keyframes float-cinematic {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-25px) rotate(1deg); }
+}

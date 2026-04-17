@@ -4,12 +4,16 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from 'next-themes';
-import { Receipt, ShieldCheck, TrendingUp, Mail, Lock, ArrowLeft, Loader2, CheckCircle2, Zap, Sun, Moon } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useStore } from '@/store/useStore';
+import { Receipt, ShieldCheck, TrendingUp, Mail, Lock, ArrowLeft, Loader2, CheckCircle2, Zap, Sun, Moon, Globe } from 'lucide-react';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const { theme, setTheme } = useTheme();
+  const { lang } = useTranslation();
+  const setLanguage = useStore(s => s.setLanguage);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,71 +84,61 @@ export default function LoginPage() {
   };
 
   return (
-    <>
-      <style dangerouslySetInnerHTML={{__html: `
-        .glass-panel {
-            background: rgba(40, 48, 68, 0.4);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(199, 196, 217, 0.1);
-        }
-        .text-gradient {
-            background: linear-gradient(135deg, #f2eeff 0%, #c2c1ff 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .cinematic-shadow {
-            box-shadow: 0 32px 64px -12px rgba(19, 27, 46, 0.8), 0 0 40px rgba(61, 50, 230, 0.15);
-        }
-        @keyframes float-cinematic {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-25px) rotate(1deg); }
-        }
-      `}} />
-      <div className="bg-[#131b2e] dark:bg-[#0a0f1a] text-[#faf8ff] min-h-screen flex items-center justify-center relative overflow-auto selection:bg-[#3d32e6] selection:text-white" dir="rtl">
+      <div className="bg-[#131b2e] dark:bg-[#0a0f1a] text-[#faf8ff] h-screen overflow-hidden flex items-center justify-center relative selection:bg-[#3d32e6] selection:text-white" dir="rtl">
         
-        {/* Theme Toggle Button */}
-        <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="fixed top-4 left-4 z-50 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all backdrop-blur-sm border border-white/10"
-          aria-label="تبديل الوضع"
-        >
-          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
+        {/* Top Controls */}
+        <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
+          {/* Language Toggle */}
+          <button
+            onClick={() => setLanguage(lang === 'ar' ? 'en' : 'ar')}
+            className="h-9 px-3 flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all backdrop-blur-sm border border-white/10 text-xs font-medium"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>{lang === 'ar' ? 'EN' : 'عربي'}</span>
+          </button>
+          {/* Theme Toggle */}
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all backdrop-blur-sm border border-white/10"
+            aria-label="تبديل الوضع"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+        </div>
         
         {/* Ambient Light Leaks */}
         <div className="absolute top-[-10%] right-[-5%] w-[800px] h-[800px] bg-[#3d32e6]/20 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#6a1edb]/15 rounded-full blur-[100px] pointer-events-none"></div>
         
         {/* Main Container */}
-        <main className="w-full max-w-7xl mx-auto p-3 md:p-6 relative z-10 py-6">
-          <div className="glass-panel rounded-[1.5rem] cinematic-shadow overflow-hidden flex flex-col lg:flex-row min-h-0">
+        <main className="w-full max-w-7xl mx-auto px-3 md:px-6 relative z-10">
+          <div className="glass-panel rounded-[1.5rem] cinematic-shadow overflow-hidden flex flex-col lg:flex-row" style={{height: 'calc(100vh - 2.5rem)'}}>
             
             {/* Promotional Area (Right Side - RTL) */}
-            <div className="w-full lg:w-3/5 p-6 lg:p-10 flex flex-col relative z-20">
+            <div className="w-full lg:w-3/5 p-5 lg:p-8 flex flex-col relative z-20 overflow-hidden">
               {/* Brand */}
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#3d32e6] to-[#5852ff] flex items-center justify-center shadow-lg shadow-[#3d32e6]/30">
-                  <Receipt className="text-white w-6 h-6" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#3d32e6] to-[#5852ff] flex items-center justify-center shadow-lg shadow-[#3d32e6]/30">
+                  <Receipt className="text-white w-5 h-5" />
                 </div>
-                <h1 className="text-4xl font-extrabold tracking-tight text-white">فاتورة</h1>
+                <h1 className="text-3xl font-extrabold tracking-tight text-white">فاتورة</h1>
               </div>
               
               {/* Headline */}
-              <div className="mb-6">
-                <h2 className="text-3xl lg:text-5xl font-bold leading-tight mb-3 text-gradient">
+              <div className="mb-4">
+                <h2 className="text-2xl lg:text-4xl font-bold leading-tight mb-2 text-gradient">
                   مستقبل الإدارة <br/>المالية الذكية
                 </h2>
-                <p className="text-[#c5c4de] text-base max-w-md font-light leading-relaxed">
+                <p className="text-[#c5c4de] text-sm max-w-md font-light leading-relaxed">
                   منصة متكاملة تجمع بين الدقة المحاسبية والذكاء الاصطناعي لتطوير أعمالك بسلاسة.
                 </p>
               </div>
               
-              <div className="hidden lg:flex flex-grow items-center justify-center relative py-4">
-                <div className="absolute w-60 h-60 bg-[#3d32e6]/20 rounded-full blur-[100px] animate-pulse pointer-events-none"></div>
+              <div className="hidden lg:flex flex-1 items-center justify-center relative py-2">
+                <div className="absolute w-48 h-48 bg-[#3d32e6]/20 rounded-full blur-[80px] animate-pulse pointer-events-none"></div>
                 <img 
                   alt="Invoicing and Financial Management 3D Illustration" 
-                  className="relative z-10 w-full max-w-xs object-contain drop-shadow-[0_25px_50px_rgba(0,0,0,0.6)]" 
+                  className="relative z-10 w-full max-w-[220px] object-contain drop-shadow-[0_25px_50px_rgba(0,0,0,0.6)]" 
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1Lu7szjGBPAgrd1X19-q3-inTavqzBOLM9SiMUXQkE4qFtx7vUBi__lu6UZ_CGQwMb3OEbwOlvZr5PXxu7BeJcGWSZukfSTs1mbcyrHGq6KEuq6BtIBSwe4DzOsGSWHRsDHuDLuWTicw8bp-dVNC98MQcNQ8dXa3ZxB_abWl2cxi3ghsCCt78pjinSkp701x1c-THay6SFihm4w9A90NWSF_5QTThDtFQdQeAU5tmT9tWyJlz8B-0ZZHnSh7TsbLVvciv7I_CPJQ" 
                   style={{ animation: 'float-cinematic 8s ease-in-out infinite' }}
                 />
@@ -173,12 +167,12 @@ export default function LoginPage() {
             </div>
             
             {/* Login Form Area (Left Side - RTL) */}
-            <div className="w-full lg:w-2/5 bg-[#131b2e]/80 p-6 lg:p-10 flex flex-col justify-center relative border-r border-[#c7c4d9]/10">
+            <div className="w-full lg:w-2/5 bg-[#131b2e]/80 p-5 lg:p-8 flex flex-col justify-center relative border-r border-[#c7c4d9]/10 overflow-y-auto">
               <div className="max-w-sm w-full mx-auto">
-                <h2 className="text-3xl font-bold text-white mb-2">
+                <h2 className="text-2xl font-bold text-white mb-1">
                   {isLogin ? 'مرحباً بعودتك' : 'ابدأ رحلة النجاح'}
                 </h2>
-                <p className="text-[#c5c4de] text-sm mb-10">
+                <p className="text-[#c5c4de] text-sm mb-6">
                   {isLogin ? 'سجل دخولك للوصول إلى لوحة التحكم الخاصة بك.' : 'أنشئ حسابك لإدارة شركاتك وفواتيرك بشكل احترافي ومتوافق.'}
                 </p>
 
@@ -285,6 +279,5 @@ export default function LoginPage() {
           </div>
         </main>
       </div>
-    </>
   );
 }
