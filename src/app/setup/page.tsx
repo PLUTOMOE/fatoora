@@ -142,10 +142,10 @@ export default function SetupPage() {
   );
 
   const sidebarItems = [
-    { icon: Building2, label: 'Company Profile', active: true },
-    { icon: FileText, label: 'Legal Documentation', active: false },
-    { icon: Users, label: 'Team Setup', active: false },
-    { icon: CheckSquare, label: 'Final Review', active: false },
+    { icon: Building2, label: 'بيانات الشركة', active: true },
+    { icon: FileText, label: 'الوثائق القانونية', active: false },
+    { icon: Users, label: 'إعداد الفريق', active: false },
+    { icon: CheckSquare, label: 'المراجعة النهائية', active: false },
   ];
 
   return (
