@@ -33,6 +33,37 @@ const RULES = {
 
 type FieldName = 'cr_number' | 'tax_number' | 'phone';
 
+function Field({ 
+  id, label, hint, icon: Icon, type = 'text', placeholder, dir: fieldDir, value, onChange, error, required = false
+}: {
+  id: string; label: string; hint?: string; icon?: any; type?: string;
+  placeholder?: string; dir?: string; value: string; onChange: (v: string) => void;
+  error?: string; required?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-sm font-semibold text-[#191c1e] dark:text-[#e8e8f0] flex items-center gap-1.5">
+        {label}
+        {!required && <span className="text-xs text-[#767683] dark:text-[#9090a8] font-normal">(اختياري)</span>}
+      </label>
+      <div className="relative">
+        {Icon && <Icon className="absolute right-3.5 top-3.5 w-4 h-4 text-[#767683] dark:text-[#8888a0] pointer-events-none" />}
+        <input
+          id={id}
+          type={type}
+          dir={fieldDir}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`w-full bg-[#e0e3e5] dark:bg-[#2a2a40] border-0 rounded-lg ${Icon ? 'pr-10' : 'pr-4'} pl-4 py-3 text-[#191c1e] dark:text-[#f0f0f5] text-base placeholder:text-[#767683] dark:placeholder:text-[#8888a0] focus:ring-2 focus:ring-[#000666]/20 dark:focus:ring-[#7b8fff]/30 focus:outline-none transition-all ${error ? 'ring-2 ring-red-400' : ''}`}
+        />
+      </div>
+      {error && <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">⚠ {error}</p>}
+      {hint && !error && <p className="text-xs text-[#767683] dark:text-[#9090a8]">{hint}</p>}
+    </div>
+  );
+}
+
 export default function SetupPage() {
   const router = useRouter();
   const { setActiveEntity } = useStore();
@@ -111,35 +142,6 @@ export default function SetupPage() {
       setIsSubmitting(false);
     }
   };
-
-  const Field = ({ 
-    id, label, hint, icon: Icon, type = 'text', placeholder, dir: fieldDir, value, onChange, error, required = false
-  }: {
-    id: string; label: string; hint?: string; icon?: any; type?: string;
-    placeholder?: string; dir?: string; value: string; onChange: (v: string) => void;
-    error?: string; required?: boolean;
-  }) => (
-    <div className="space-y-2">
-      <label htmlFor={id} className="text-sm font-semibold text-[#191c1e] dark:text-[#e8e8f0] flex items-center gap-1.5">
-        {label}
-        {!required && <span className="text-xs text-[#767683] dark:text-[#9090a8] font-normal">(اختياري)</span>}
-      </label>
-      <div className="relative">
-        {Icon && <Icon className="absolute right-3.5 top-3.5 w-4 h-4 text-[#767683] dark:text-[#8888a0] pointer-events-none" />}
-        <input
-          id={id}
-          type={type}
-          dir={fieldDir}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className={`w-full bg-[#e0e3e5] dark:bg-[#2a2a40] border-0 rounded-lg ${Icon ? 'pr-10' : 'pr-4'} pl-4 py-3 text-[#191c1e] dark:text-[#f0f0f5] text-base placeholder:text-[#767683] dark:placeholder:text-[#8888a0] focus:ring-2 focus:ring-[#000666]/20 dark:focus:ring-[#7b8fff]/30 focus:outline-none transition-all ${error ? 'ring-2 ring-red-400' : ''}`}
-        />
-      </div>
-      {error && <p className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">⚠ {error}</p>}
-      {hint && !error && <p className="text-xs text-[#767683] dark:text-[#9090a8]">{hint}</p>}
-    </div>
-  );
 
   const sidebarItems = [
     { icon: Building2, label: 'بيانات الشركة', active: true },
