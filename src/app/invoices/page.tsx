@@ -18,11 +18,7 @@ export default function InvoicesList() {
   const [showCreateMenu, setShowCreateMenu] = useState(false);
 
   useEffect(() => {
-    if (activeEntity.name) {
-      fetchData();
-    } else {
-      setLoading(false);
-    }
+    fetchData();
   }, [activeEntity]);
 
   const fetchData = async () => {
@@ -30,9 +26,18 @@ export default function InvoicesList() {
     try {
       const { createClient } = await import('@/lib/supabase/client');
       const supabase = createClient();
-      const { data: ent } = await supabase.from('entities').select('id').eq('name', activeEntity.name).single();
+      
+      let ent: { id: string } | null = null;
+      if (activeEntity?.name) {
+        const { data } = await supabase.from('entities').select('id').eq('name', activeEntity.name).single();
+        ent = data;
+      }
+      if (!ent) {
+        const { data } = await supabase.from('entities').select('id').limit(1).single();
+        ent = data;
+      }
+      
       if (ent) {
-        // Fetch only invoices
         const res = await getInvoices(ent.id);
         setData(res?.filter(i => i.type !== 'quotation') || []);
       }
@@ -100,18 +105,18 @@ export default function InvoicesList() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatStrip label="الإجمالي" value="0" unit="ر.س" />
-        <StatStrip label={t('pages.invoices.paid')} value="0" unit="ر.س" color="#22C55E" />
+        <StatStrip label="مدفوعة" value="0" unit="ر.س" color="#22C55E" />
         <StatStrip label="مستحقة" value="0" unit="ر.س" color="#F59E0B" />
-        <StatStrip label={t('pages.invoices.overdue')} value="0" unit="ر.س" color="#E5484D" />
+        <StatStrip label="متأخرة" value="0" unit="ر.س" color="#E5484D" />
       </div>
 
       <div className="bg-card border border-border rounded-lg">
         <div className="flex items-center px-3 border-b border-border">
           <div className="flex items-center gap-1">
-            <Tab active>t('pages.invoices.all')<span className="text-[10px] text-muted-foreground/80 mr-1">{data.length}</span></Tab>
-            <Tab>t('pages.invoices.paid')<span className="text-[10px] text-muted-foreground/80 mr-1">0</span></Tab>
+            <Tab active>الكل <span className="text-[10px] text-muted-foreground/80 mr-1">{data.length}</span></Tab>
+            <Tab>مدفوعة <span className="text-[10px] text-muted-foreground/80 mr-1">0</span></Tab>
             <Tab>مستحقة <span className="text-[10px] text-muted-foreground/80 mr-1">0</span></Tab>
-            <Tab>t('pages.invoices.overdue')<span className="text-[10px] text-muted-foreground/80 mr-1">0</span></Tab>
+            <Tab>متأخرة <span className="text-[10px] text-muted-foreground/80 mr-1">0</span></Tab>
           </div>
         </div>
 
@@ -121,7 +126,7 @@ export default function InvoicesList() {
             <input type="text" placeholder="ابحث برقم الفاتورة أو العميل..." className="w-full pr-8 pl-3 h-8 bg-background border border-border rounded-md text-[12px] focus:outline-none focus:border-[#5B5BD6] focus:bg-card" />
           </div>
           <FilterButton label="النوع" />
-          <FilterButton label={t('pages.invoices.date')} />
+          <FilterButton label="التاريخ" />
         </div>
 
         <div className="overflow-x-auto min-h-[300px]">
@@ -137,9 +142,9 @@ export default function InvoicesList() {
                 <tr className="border-b border-border text-[10px] text-muted-foreground/80 uppercase tracking-wider">
                   <th className="text-right font-medium px-3 py-2.5">الفاتورة</th>
                   <th className="text-right font-medium px-3 py-2.5">النوع</th>
-                  <th className="text-right font-medium px-3 py-2.5">t('pages.invoices.status')</th>
-                  <th className="text-right font-medium px-3 py-2.5">t('pages.invoices.date')</th>
-                  <th className="text-left font-medium px-3 py-2.5">t('pages.invoices.amount')</th>
+                  <th className="text-right font-medium px-3 py-2.5">الحالة</th>
+                  <th className="text-right font-medium px-3 py-2.5">التاريخ</th>
+                  <th className="text-left font-medium px-3 py-2.5">المبلغ</th>
                   <th className="w-8"></th>
                 </tr>
               </thead>
