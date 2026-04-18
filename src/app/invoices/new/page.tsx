@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, Save, LayoutTemplate, Eye, X, ArrowRight, Printer, Plus, Trash2, GripVertical, Stamp, PenTool, Upload, ImageIcon } from 'lucide-react';
 import { CustomerAutocomplete, CustomerData } from '@/components/ui/CustomerAutocomplete';
 import { ProductAutocomplete, ProductData } from '@/components/ui/ProductAutocomplete';
+import { NotesManager } from '@/components/ui/NotesManager';
 import { ClassicTemplate } from '@/components/invoice-templates/ClassicTemplate';
 import { ModernTemplate } from '@/components/invoice-templates/ModernTemplate';
 import { MinimalTemplate } from '@/components/invoice-templates/MinimalTemplate';
@@ -428,74 +429,44 @@ function InvoiceFormContent() {
           </div>
         </div>
 
-        {/* Notes, Stamp & Signature */}
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-border bg-muted/30">
-            <h2 className="text-sm font-bold text-foreground">ملاحظات وإضافات</h2>
-          </div>
-          <div className="p-5 space-y-5">
-            {/* Notes */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground">الملاحظات</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="أضف ملاحظات للفاتورة..."
-                className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-primary/50 resize-none min-h-[80px] transition-colors"
-                rows={3}
-              />
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  'الأسعار شاملة ضريبة القيمة المضافة 15%',
-                  'يرجى السداد خلال 30 يوماً من تاريخ الفاتورة',
-                  'البضاعة المباعة لا ترد ولا تستبدل',
-                  'شكراً لتعاملكم معنا',
-                ].map((note, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setNotes(prev => prev ? `${prev}\n${note}` : note)}
-                    className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-background hover:bg-muted hover:border-primary/30 text-muted-foreground hover:text-foreground transition-all"
-                  >
-                    + {note}
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/* Notes Manager */}
+        <NotesManager
+          docType="invoice"
+          value={notes}
+          onChange={setNotes}
+        />
 
-            {/* Stamp & Signature Toggle Buttons */}
-            <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
-              <button
-                type="button"
-                onClick={() => setShowSignature(!showSignature)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                  showSignature 
-                    ? 'border-primary bg-primary/5 text-primary shadow-sm' 
-                    : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
-                }`}
-              >
-                <PenTool className="w-4 h-4" />
-                {showSignature ? '✓ تم إضافة التوقيع' : 'إضافة التوقيع'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowStamp(!showStamp)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                  showStamp 
-                    ? 'border-primary bg-primary/5 text-primary shadow-sm' 
-                    : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
-                }`}
-              >
-                <Stamp className="w-4 h-4" />
-                {showStamp ? '✓ تم إضافة الختم' : 'إضافة الختم'}
-              </button>
-              {(!settings.stamp_url && !settings.signature_url) && (
-                <span className="text-[11px] text-muted-foreground/70 self-center mr-2">
-                  💡 ارفع التوقيع والختم من الإعدادات أولاً
-                </span>
-              )}
-            </div>
-          </div>
+        {/* Stamp & Signature Toggle Buttons */}
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => setShowSignature(!showSignature)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+              showSignature 
+                ? 'border-primary bg-primary/5 text-primary shadow-sm' 
+                : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
+            }`}
+          >
+            <PenTool className="w-4 h-4" />
+            {showSignature ? '✓ تم إضافة التوقيع' : 'إضافة التوقيع'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowStamp(!showStamp)}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+              showStamp 
+                ? 'border-primary bg-primary/5 text-primary shadow-sm' 
+                : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
+            }`}
+          >
+            <Stamp className="w-4 h-4" />
+            {showStamp ? '✓ تم إضافة الختم' : 'إضافة الختم'}
+          </button>
+          {(!settings.stamp_url && !settings.signature_url) && (
+            <span className="text-[11px] text-muted-foreground/70 self-center mr-2">
+              💡 ارفع التوقيع والختم من الإعدادات أولاً
+            </span>
+          )}
         </div>
 
       </div>
