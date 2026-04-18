@@ -14,6 +14,7 @@ import { CorporateTemplate } from '@/components/invoice-templates/CorporateTempl
 import { CompactTemplate } from '@/components/invoice-templates/CompactTemplate';
 import { useStore } from '@/store/useStore';
 import { createClient } from '@/lib/supabase/client';
+import { getInvoiceDetails } from '@/lib/supabase/services';
 
 interface InvoiceItem {
   name: string;
@@ -98,10 +99,48 @@ function InvoiceFormContent() {
           address: cData.address || ''
         });
       } catch (e) {
-        console.error("Failed to parse returned customer data: ", e);
+        console.error("Error parsing newCustomerData", e);
       }
     }
 
+    // Load from Quotation if converting
+    const sourceQuotationId = searchParams.get('source_quotation_id');
+    if (sourceQuotationId) {
+      const loadQuotation = async () => {
+        try {
+          const { invoice, items: qItems } = await getInvoiceDetails(sourceQuotationId);
+          if (invoice && qItems) {
+            // Set Customer
+            if (invoice.customers) {
+               setCustomerInfo({
+                 id: invoice.customers.id,
+                 name: invoice.customers.name,
+                 tax_number: invoice.customers.tax_number || '',
+                 address: invoice.customers.address || ''
+               });
+            }
+            // Set Items
+            if (qItems.length > 0) {
+              const mappedItems = qItems.map((qi: any) => ({
+                name: qi.description.split('\n')[0] || qi.description,
+                description: qi.description,
+                qty: qi.quantity,
+                price: qi.unit_price,
+                tax_rate: qi.tax_rate
+              }));
+              setItems(mappedItems);
+            }
+            // Set Notes
+            if (invoice.notes) {
+              setNotes(invoice.notes);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load quotation for conversion", err);
+        }
+      };
+      loadQuotation();
+    }
   }, [searchParams]);
 
   const handleAddItem = () => {

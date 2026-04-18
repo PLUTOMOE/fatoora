@@ -75,6 +75,14 @@ export default function QuotationDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button 
+            onClick={() => router.push(`/invoices/new?source_quotation_id=${invoice.id}`)}
+            className="h-8 px-3 bg-primary text-primary-foreground rounded-md text-[12px] hover:bg-primary/90 flex items-center gap-1.5 font-medium"
+            title="إنشاء فاتورة من هذا العرض"
+          >
+            <CheckCircle className="w-3.5 h-3.5" />
+            <span>تحويل لفاتورة</span>
+          </button>
           {/* Action buttons */}
           <button className="h-8 px-3 bg-card border border-border rounded-md text-[12px] hover:border-border/80 flex items-center gap-1.5">
             <Send className="w-3.5 h-3.5" />
