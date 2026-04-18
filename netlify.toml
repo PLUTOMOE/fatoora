@@ -1,8 +1,0 @@
-[build]
-  command = "npm run build"
-  publish = ".next"
-
-[build.environment]
-  NEXT_PUBLIC_SUPABASE_URL = "https://byckypheqbrcekoigspl.supabase.co"
-  NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5Y2t5cGhlcWJyY2Vrb2lnc3BsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDMyNzksImV4cCI6MjA5MjAxOTI3OX0.B_19k6wd2SMUrxzAKiJjYHonf5qu3A4uSptPOMWBrSY"
-  GEMINI_API_KEY = "AIzaSyAGqk0hwNNu3A-iz4tIE86hHQEtuqEss64"
