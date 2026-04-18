@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { 
   Home, Inbox, ScrollText, Receipt, Sparkles, 
   Users, Package, Bookmark, Building2, BarChart3, 
-  Settings, ChevronsUpDown, Plus, ChevronRight, PenLine
+  Settings, ChevronsUpDown, Plus, ChevronRight, PenLine, ShieldAlert
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -15,6 +15,19 @@ export function Sidebar() {
   const { sidebarCollapsed, setSidebarCollapsed, activeEntity, setShowEntitySwitcher, isMobileMenuOpen, setIsMobileMenuOpen } = useStore();
   const pathname = usePathname();
   const { t } = useTranslation();
+  const [isAdmin, setIsAdmin] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkAdmin = async () => {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { data } = await supabase.auth.getUser();
+      if (data.user?.email === '38mhamdy@gmail.com') {
+        setIsAdmin(true);
+      }
+    };
+    checkAdmin();
+  }, []);
 
   const sections = [
     {
@@ -34,8 +47,7 @@ export function Sidebar() {
       label: t('sidebar.library'),
       items: [
         { icon: Users, label: t('sidebar.customers'), href: '/customers' },
-        { icon: Package, label: t('sidebar.products'), href: '/products' },
-        { icon: Bookmark, label: t('sidebar.notes'), href: '/notes' },
+        { icon: Package, label: t('sidebar.products'), href: '/products' }
       ]
     },
     {
@@ -44,6 +56,7 @@ export function Sidebar() {
         { icon: Building2, label: t('sidebar.entities'), href: '/entities' },
         { icon: BarChart3, label: t('sidebar.reports'), href: '/reports' },
         { icon: Settings, label: t('sidebar.settings'), href: '/settings' },
+        ...(isAdmin ? [{ icon: ShieldAlert, label: 'لوحة التحكم العليا', href: '/admin', highlight: true }] : [])
       ]
     }
   ];
@@ -116,15 +129,18 @@ export function Sidebar() {
   );
 }
 
-function NavItem({ icon: Icon, label, active, count, accent, shortcut, href, collapsed }: any) {
+function NavItem({ icon: Icon, label, active, count, accent, shortcut, href, collapsed, highlight }: any) {
   return (
     <Link 
       href={href}
       className={`group w-full flex items-center gap-2.5 px-2.5 h-[30px] rounded-md transition-colors text-right text-[13px] ${
         active 
           ? 'bg-[#F0F0F0] text-foreground font-medium' 
-          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          : highlight 
+            ? 'text-red-500 hover:bg-red-50 hover:text-red-600 font-bold'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
       }`}
+      title={collapsed ? label : undefined}
     >
       <Icon className={`w-[15px] h-[15px] flex-shrink-0 ${active ? 'text-foreground' : accent ? 'text-[#A88732]' : ''}`} strokeWidth={1.75} />
       {!collapsed && (
