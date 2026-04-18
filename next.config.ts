@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
+const nextConfig: any = {
   devIndicators: false,
   turbopack: {
     root: process.cwd(),
