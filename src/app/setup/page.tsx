@@ -289,16 +289,6 @@ export default function SetupPage() {
             {/* Actions */}
             <div className="flex justify-end items-center gap-4">
               <button 
-                type="button"
-                onClick={() => {
-                  localStorage.setItem('setup_skipped', 'true');
-                  router.push('/');
-                }}
-                className="px-6 py-3 rounded-xl text-sm text-[#585c80] dark:text-[#a0a0b8] hover:bg-[#e6e8ea] dark:hover:bg-[#252540] transition-colors font-medium"
-              >
-                تخطي الآن
-              </button>
-              <button 
                 type="submit"
                 disabled={isSubmitting}
                 className="group px-8 py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-[#000666] to-[#1a237e] shadow-[0_8px_16px_rgba(0,6,102,0.2)] hover:shadow-[0_12px_24px_rgba(0,6,102,0.3)] hover:scale-[1.02] transition-all flex items-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
