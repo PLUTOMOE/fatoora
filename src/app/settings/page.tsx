@@ -36,11 +36,11 @@ export default function SettingsPage() {
     },
     {
       title: 'الربط والبرمجة (API)',
-      description: 'مفاتيح الربط البرمجي للتواصل مع الأنظمة المحاسبية الخارجية وإدارة الخطافات (Webhooks).',
+      description: 'إدارة مفتاح الذكاء الاصطناعي (Gemini) الخاص بك، ومفاتيح الربط البرمجي للأنظمة الخارجية.',
       icon: KeySquare,
       color: 'text-rose-500',
       bgColor: 'bg-rose-50 dark:bg-rose-500/10',
-      href: '#'
+      href: '/settings/api'
     }
   ];
 

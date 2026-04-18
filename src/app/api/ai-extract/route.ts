@@ -83,8 +83,13 @@ export async function POST(request: NextRequest) {
     if (!geminiResponse.ok) {
       const errorData = await geminiResponse.text();
       console.error('Gemini API Error:', errorData);
+      let parsedMessage = errorData;
+      try {
+        const parsed = JSON.parse(errorData);
+        parsedMessage = parsed.error?.message || errorData;
+      } catch (e) {}
       return NextResponse.json({ 
-        error: 'فشل في الاتصال بـ Gemini API. تأكد من صحة مفتاح API.' 
+        error: `خطأ من جوجل: ${parsedMessage}` 
       }, { status: 500 });
     }
 
