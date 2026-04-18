@@ -37,8 +37,9 @@ function InvoiceFormContent() {
   // Quotation Data States
   const [customerInfo, setCustomerInfo] = useState({ name: '', tax_number: '', address: '' });
   const [invoiceDates, setInvoiceDates] = useState({ date: new Date().toISOString().split('T')[0], due_date: '' });
-  const [stampUrl, setStampUrl] = useState<string>('');
-  const [signatureUrl, setSignatureUrl] = useState<string>('');
+  const [showStamp, setShowStamp] = useState(false);
+  const [showSignature, setShowSignature] = useState(false);
+  const [notes, setNotes] = useState('');
   const [items, setItems] = useState<InvoiceItem[]>([
     { name: '', description: '', qty: 1, price: 0, tax_rate: 15 }
   ]);
@@ -142,9 +143,9 @@ function InvoiceFormContent() {
       total
     },
     settings: {
-      stamp_url: stampUrl || settings.stamp_url,
-      signature_url: signatureUrl || settings.signature_url,
-      notes: settings.default_notes,
+      stamp_url: showStamp ? settings.stamp_url : '',
+      signature_url: showSignature ? settings.signature_url : '',
+      notes: notes || settings.default_notes,
       template: settings.template
     },
     type: 'invoice' as const
@@ -427,81 +428,71 @@ function InvoiceFormContent() {
           </div>
         </div>
 
-        {/* Stamp & Signature Section */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h2 className="text-sm font-bold text-foreground mb-4">التوقيع والختم (اختياري)</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Signature */}
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                <PenTool className="w-3.5 h-3.5" />
-                التوقيع
-              </label>
-              {signatureUrl ? (
-                <div className="relative group border border-border rounded-lg p-4 bg-background flex items-center justify-center min-h-[100px]">
-                  <img src={signatureUrl} alt="التوقيع" className="max-h-[80px] object-contain" />
+        {/* Notes, Stamp & Signature */}
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-border bg-muted/30">
+            <h2 className="text-sm font-bold text-foreground">ملاحظات وإضافات</h2>
+          </div>
+          <div className="p-5 space-y-5">
+            {/* Notes */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">الملاحظات</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="أضف ملاحظات للفاتورة..."
+                className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-primary/50 resize-none min-h-[80px] transition-colors"
+                rows={3}
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  'الأسعار شاملة ضريبة القيمة المضافة 15%',
+                  'يرجى السداد خلال 30 يوماً من تاريخ الفاتورة',
+                  'البضاعة المباعة لا ترد ولا تستبدل',
+                  'شكراً لتعاملكم معنا',
+                ].map((note, i) => (
                   <button
-                    onClick={() => setSignatureUrl('')}
-                    className="absolute top-2 left-2 w-6 h-6 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20"
+                    key={i}
+                    type="button"
+                    onClick={() => setNotes(prev => prev ? `${prev}\n${note}` : note)}
+                    className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-background hover:bg-muted hover:border-primary/30 text-muted-foreground hover:text-foreground transition-all"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    + {note}
                   </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-6 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all min-h-[100px]">
-                  <Upload className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">اضغط لرفع صورة التوقيع</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => setSignatureUrl(reader.result as string);
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </label>
-              )}
+                ))}
+              </div>
             </div>
 
-            {/* Stamp */}
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                <Stamp className="w-3.5 h-3.5" />
-                الختم
-              </label>
-              {stampUrl ? (
-                <div className="relative group border border-border rounded-lg p-4 bg-background flex items-center justify-center min-h-[100px]">
-                  <img src={stampUrl} alt="الختم" className="max-h-[80px] object-contain" />
-                  <button
-                    onClick={() => setStampUrl('')}
-                    className="absolute top-2 left-2 w-6 h-6 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-6 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all min-h-[100px]">
-                  <Upload className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">اضغط لرفع صورة الختم</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => setStampUrl(reader.result as string);
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </label>
+            {/* Stamp & Signature Toggle Buttons */}
+            <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setShowSignature(!showSignature)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                  showSignature 
+                    ? 'border-primary bg-primary/5 text-primary shadow-sm' 
+                    : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                }`}
+              >
+                <PenTool className="w-4 h-4" />
+                {showSignature ? '✓ تم إضافة التوقيع' : 'إضافة التوقيع'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowStamp(!showStamp)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
+                  showStamp 
+                    ? 'border-primary bg-primary/5 text-primary shadow-sm' 
+                    : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                }`}
+              >
+                <Stamp className="w-4 h-4" />
+                {showStamp ? '✓ تم إضافة الختم' : 'إضافة الختم'}
+              </button>
+              {(!settings.stamp_url && !settings.signature_url) && (
+                <span className="text-[11px] text-muted-foreground/70 self-center mr-2">
+                  💡 ارفع التوقيع والختم من الإعدادات أولاً
+                </span>
               )}
             </div>
           </div>
