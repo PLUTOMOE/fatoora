@@ -22,21 +22,26 @@ export default function ProductsList() {
   const [newProduct, setNewProduct] = useState({ name: '', sku: '', price: '', tax_rate: '15' });
 
   useEffect(() => {
-    if (activeEntity.name) {
-      fetchProducts();
-    } else {
-      setLoading(false);
-    }
+    fetchProducts();
   }, [activeEntity]);
+
+  const resolveEntityId = async () => {
+    const { createClient } = await import('@/lib/supabase/client');
+    const supabase = createClient();
+    if (activeEntity?.name) {
+      const { data } = await supabase.from('entities').select('id').eq('name', activeEntity.name).single();
+      if (data) return data.id;
+    }
+    const { data } = await supabase.from('entities').select('id').limit(1).single();
+    return data?.id || null;
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      const { data: ent } = await supabase.from('entities').select('id').eq('name', activeEntity.name).single();
-      if (ent) {
-        const data = await getProducts(ent.id);
+      const entId = await resolveEntityId();
+      if (entId) {
+        const data = await getProducts(entId);
         setProducts(data || []);
       }
     } catch (e) { console.error(e); }
@@ -47,11 +52,9 @@ export default function ProductsList() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      const { data: ent } = await supabase.from('entities').select('id').eq('name', activeEntity.name).single();
-      if (!ent) {
-        alert('يرجى اختيار الكيان أولاً');
+      const entId = await resolveEntityId();
+      if (!entId) {
+        alert('يرجى إنشاء كيان (شركة) أولاً من صفحة الإعداد');
         return;
       }
 
@@ -60,7 +63,7 @@ export default function ProductsList() {
         sku: newProduct.sku,
         price: parseFloat(newProduct.price || '0'),
         tax_rate: parseFloat(newProduct.tax_rate),
-        entity_id: ent.id 
+        entity_id: entId 
       });
       setShowModal(false);
       setNewProduct({ name: '', sku: '', price: '', tax_rate: '15' });

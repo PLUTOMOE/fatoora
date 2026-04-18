@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight, Save, LayoutTemplate, Eye, X, ArrowRight, Printer, Plus, Trash2, GripVertical } from 'lucide-react';
 import { CustomerAutocomplete, CustomerData } from '@/components/ui/CustomerAutocomplete';
+import { ProductAutocomplete, ProductData } from '@/components/ui/ProductAutocomplete';
 import { ClassicTemplate } from '@/components/invoice-templates/ClassicTemplate';
 import { ModernTemplate } from '@/components/invoice-templates/ModernTemplate';
 import { MinimalTemplate } from '@/components/invoice-templates/MinimalTemplate';
@@ -317,12 +318,23 @@ function QuotationFormContent() {
                       </td>
                       <td className="py-3 px-4 align-top">
                         <div className="space-y-2">
-                          <input 
-                            type="text" 
+                          <ProductAutocomplete
                             value={item.name}
-                            onChange={(e) => handleItemChange(idx, 'name', e.target.value)}
-                            placeholder="ابحث عن منتج أو اكتب مباشرة..." 
-                            className="w-full bg-transparent border border-transparent focus:border-border hover:border-border rounded-md px-3 py-2 text-sm outline-none focus:bg-background transition-all font-medium"
+                            onChange={(product, rawName) => {
+                              if (product) {
+                                const newItems = [...items];
+                                newItems[idx] = {
+                                  ...newItems[idx],
+                                  name: product.name,
+                                  price: product.price || newItems[idx].price,
+                                  tax_rate: product.tax_rate ?? 15,
+                                  description: product.description || newItems[idx].description,
+                                };
+                                setItems(newItems);
+                              } else {
+                                handleItemChange(idx, 'name', rawName);
+                              }
+                            }}
                           />
                           <input 
                             type="text" 
