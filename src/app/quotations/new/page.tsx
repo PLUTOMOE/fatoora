@@ -244,8 +244,8 @@ function QuotationFormContent() {
         }
       }
       
-      // Redirect
-      router.push('/quotations');
+      // Redirect to the newly created quotation detail page
+      router.push(`/quotations/${newInvoice.id}`);
       router.refresh();
       
     } catch (error) {
@@ -268,7 +268,7 @@ function QuotationFormContent() {
               <ArrowRight className="w-5 h-5 text-foreground" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">معاينة عرض السعر</h1>
+              <h1 className="text-2xl font-bold text-foreground">عرض السعر</h1>
               <p className="text-sm text-muted-foreground mt-1">تأكد من شكل عرض السعر قبل الإصدار</p>
             </div>
           </div>

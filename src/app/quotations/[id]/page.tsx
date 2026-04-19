@@ -7,7 +7,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { useStore } from '@/store/useStore';
 import { getInvoiceDetails } from '@/lib/supabase/services';
 import { formatCurrency } from '@/lib/format';
-import { ZatcaQRCode } from '@/components/ui/ZatcaQRCode';
+
 
 export default function QuotationDetail() {
   const router = useRouter();
@@ -130,7 +130,7 @@ export default function QuotationDetail() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6 py-6 border-b border-border">
+          <div className="py-6 border-b border-border">
             <div>
               <div className="text-[10px] font-semibold text-muted-foreground/80 uppercase tracking-wider mb-2">
                  مقدمة إلى
@@ -140,15 +140,6 @@ export default function QuotationDetail() {
                 {customer?.address && <div>{customer.address}</div>}
                 {customer?.tax_number && <div>الرقم الضريبي: <span className="font-mono">{customer.tax_number}</span></div>}
               </div>
-            </div>
-            <div className="flex justify-end">
-              <ZatcaQRCode 
-                sellerName={activeEntity?.name} 
-                vatNumber={activeEntity?.tax_number}
-                timestamp={invoice.issue_date || new Date().toISOString()}
-                invoiceTotal={invoice.total.toString()}
-                vatTotal={invoice.tax_total.toString()}
-              />
             </div>
           </div>
 
