@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -32,15 +32,17 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
+  const isResetRoute = request.nextUrl.pathname.startsWith('/update-password')
 
   // إذا لم يكن مسجلا وحاول الدخول لصفحات محمية، وجهه لتسجيل الدخول
-  if (!user && !isAuthRoute) {
+  if (!user && !isAuthRoute && !isResetRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
   // إذا كان مسجلا وحاول الدخول لصفحة تسجيل الدخول مرة أخرى، وجهه الرئيسية
+  // نستثني صفحة update-password لأن المستخدم قد يكون متصلاً أثناء تحديثها
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
