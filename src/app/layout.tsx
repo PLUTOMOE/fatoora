@@ -5,8 +5,8 @@ import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: 'فاتورة',
-  description: 'منصة إدارة الفواتير والكيانات',
+  title: 'فاتورة | منصة الفوترة الإلكترونية',
+  description: 'منصة احترافية لإدارة الفواتير وعروض الأسعار متوافقة مع هيئة الزكاة والضريبة',
 };
 
 export const viewport: Viewport = {
@@ -22,6 +22,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://byckypheqbrcekoigspl.supabase.co" />
+      </head>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <ClientLayout>{children}</ClientLayout>

@@ -6,15 +6,19 @@ import { TopBar } from "./TopBar";
 import { CommandPalette } from "./CommandPalette";
 import { EntitySwitcher } from "./EntitySwitcher";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
+
+const AUTH_ROUTES = new Set(['/login', '/setup', '/update-password']);
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { sidebarCollapsed, activeEntity, setActiveEntity, language } = useStore();
   const pathname = usePathname();
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
+  // Only run the auth check once per mount, not every route change
+  const hasChecked = useRef(false);
 
   useEffect(() => {
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
@@ -22,34 +26,39 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
   }, [language]);
 
   useEffect(() => {
-    const checkUserEntities = async () => {
-      // لا نفحص في صفحات الدخول أو الإعداد
-      if (pathname === '/login' || pathname === '/setup') {
-        setIsChecking(false);
-        return;
-      }
+    // Skip on auth pages immediately — no loading needed
+    if (AUTH_ROUTES.has(pathname)) {
+      setIsChecking(false);
+      return;
+    }
 
+    // Already checked - don't re-check on every route change
+    if (hasChecked.current) {
+      setIsChecking(false);
+      return;
+    }
+
+    const checkUserEntities = async () => {
       setIsChecking(true);
       try {
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (!session) {
           router.push('/login');
           return;
         }
 
         // فحص وجود شركات للمستخدم
-        const { data } = await supabase.from('entities').select('*').limit(1);
-        
+        const { data } = await supabase.from('entities').select('id, name').limit(1);
+
         if (!data || data.length === 0) {
           router.push('/setup');
-        } else {
-          // إذا كان لديه شركة ولم نفعلها في المتجر العام، نفعل الأولى
-          if (!activeEntity.name || activeEntity.name === 'عاصمة المجد للتجارة') {
-            setActiveEntity({ name: data[0].name, short: data[0].name.substring(0, 3) });
-          }
+        } else if (!activeEntity.name || activeEntity.name === 'عاصمة المجد للتجارة') {
+          setActiveEntity({ name: data[0].name, short: data[0].name.substring(0, 2) });
         }
+
+        hasChecked.current = true;
       } catch (error) {
         console.error("Error checking entities:", error);
       } finally {
@@ -58,13 +67,12 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     };
 
     checkUserEntities();
-  }, [pathname, activeEntity.name, router, setActiveEntity]);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (pathname === '/login' || pathname === '/setup') {
+  if (AUTH_ROUTES.has(pathname)) {
     return <main>{children}</main>;
   }
 
-  // إظهار اللودر أثناء فحص الإجبار بالتوجه لإنشاء شركة
   if (isChecking) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
