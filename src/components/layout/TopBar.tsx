@@ -1,10 +1,9 @@
-"use scroll";
 "use client";
 
 import React, { useEffect, useState } from 'react';
 import { 
   Search, Bell, HelpCircle, ChevronDown, ChevronLeft, 
-  User, Settings, Wallet, Keyboard, MessageSquare, ExternalLink, LogOut, Moon, Sun, Menu
+  Settings, LogOut, Moon, Sun, Menu, User
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useStore } from '@/store/useStore';
@@ -15,8 +14,10 @@ import { useRouter } from 'next/navigation';
 export function TopBar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [userInfo, setUserInfo] = useState<{ name: string; email: string; initials: string } | null>(null);
   
   useEffect(() => setMounted(true), []);
+
   const { 
     showNotifications, setShowNotifications, 
     showUserMenu, setShowUserMenu, 
@@ -26,7 +27,18 @@ export function TopBar() {
   const supabase = createClient();
   const router = useRouter();
   const { t } = useTranslation();
-  const { language, setLanguage } = useStore();
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'مستخدم';
+        const initials = name.substring(0, 2).toUpperCase();
+        setUserInfo({ name, email: user.email || '', initials });
+      }
+    };
+    loadUser();
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -55,18 +67,14 @@ export function TopBar() {
 
           <div className="w-px h-5 bg-border mx-1.5"></div>
 
-
           <button 
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
           >
             {mounted && theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
-          
-          <button className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-accent text-muted-foreground hover:text-foreground">
-            <HelpCircle className="w-4 h-4" />
-          </button>
 
+          {/* Notifications - disabled until real notification system is ready */}
           <div className="relative">
             <button 
               onClick={() => {
@@ -76,7 +84,6 @@ export function TopBar() {
               className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground/80 hover:text-foreground relative"
             >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 left-1.5 w-1.5 h-1.5 bg-[#E5484D] rounded-full"></span>
             </button>
             {showNotifications && <NotificationsDropdown />}
           </div>
@@ -90,11 +97,11 @@ export function TopBar() {
               className="flex items-center gap-2 h-8 pl-2 pr-1 rounded-md hover:bg-muted"
             >
               <div className="w-6 h-6 bg-gradient-to-br from-[#5B5BD6] to-[#3E3FBF] rounded-full flex items-center justify-center text-primary-foreground text-[10px] font-semibold">
-                مز
+                {userInfo?.initials || '..'}
               </div>
               <ChevronDown className="w-3 h-3 text-muted-foreground/80" />
             </button>
-            {showUserMenu && <UserMenu onLogout={handleLogout} />}
+            {showUserMenu && <UserMenu userInfo={userInfo} onLogout={handleLogout} router={router} />}
           </div>
 
           <div className="w-px h-5 bg-border mx-1.5 lg:hidden"></div>
@@ -112,82 +119,54 @@ export function TopBar() {
 }
 
 function NotificationsDropdown() {
-  const { t } = useTranslation();
   return (
-    <div className="absolute top-full left-0 mt-1.5 w-[360px] bg-card border border-border rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.08)] animate-slideUp overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <div className="text-[13px] font-semibold text-foreground">{t('topbar.notifications')}</div>
-        <button className="text-[11px] text-[#5B5BD6] hover:underline">{t('topbar.mark_all_read')}</button>
+    <div className="absolute top-full left-0 mt-1.5 w-[320px] bg-card border border-border rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.08)] animate-slideUp overflow-hidden">
+      <div className="px-4 py-3 border-b border-border">
+        <div className="text-[13px] font-semibold text-foreground">الإشعارات</div>
       </div>
-      <div className="max-h-[400px] overflow-y-auto">
-        <NotifItem dot="#22C55E" title="تم قبول عرض السعر" desc="مؤسسة النخبة قبلت عرض Q-2026-045" time="منذ 5 دقائق" />
-        <NotifItem dot="#F59E0B" title="فاتورة قاربت على الاستحقاق" desc="INV-2026-127 تستحق خلال 3 أيام" time="منذ ساعة" />
-        <NotifItem dot="#A88732" title="تم استخراج 12 صنف" desc="من عرض السعر الخارجي بنجاح" time="منذ 3 ساعات" />
-        <NotifItem dot="#9B9B9B" title="تم تجديد اشتراكك" desc="باقة احترافية - سنة كاملة" time="أمس" read />
-      </div>
-      <div className="px-4 py-2 border-t border-border text-center">
-        <button className="text-[12px] text-muted-foreground hover:text-foreground">{t('topbar.view_all_notif')}</button>
+      <div className="px-4 py-8 text-center">
+        <Bell className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+        <p className="text-[13px] text-muted-foreground">لا توجد إشعارات جديدة</p>
       </div>
     </div>
   );
 }
 
-function NotifItem({ dot, title, desc, time, read }: any) {
-  return (
-    <button className={`w-full text-right px-4 py-3 border-b border-border/50 last:border-0 hover:bg-background transition-colors ${read ? 'opacity-60' : ''}`}>
-      <div className="flex items-start gap-2.5">
-        <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: dot }}></div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-medium text-foreground mb-0.5">{title}</div>
-          <div className="text-[12px] text-muted-foreground truncate mb-1">{desc}</div>
-          <div className="text-[11px] text-muted-foreground/80">{time}</div>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function UserMenu({ onLogout }: any) {
+function UserMenu({ userInfo, onLogout, router }: any) {
   const { t } = useTranslation();
   return (
-    <div className="absolute top-full left-0 mt-1.5 w-[260px] bg-card border border-border rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.08)] animate-slideUp overflow-hidden py-1.5">
+    <div className="absolute top-full left-0 mt-1.5 w-[240px] bg-card border border-border rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.08)] animate-slideUp overflow-hidden py-1.5">
+      {/* User Info */}
       <div className="px-3 py-3 border-b border-border">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-gradient-to-br from-[#5B5BD6] to-[#3E3FBF] rounded-full flex items-center justify-center text-primary-foreground text-[12px] font-semibold">مز</div>
+          <div className="w-9 h-9 bg-gradient-to-br from-[#5B5BD6] to-[#3E3FBF] rounded-full flex items-center justify-center text-primary-foreground text-[12px] font-semibold">
+            {userInfo?.initials || '..'}
+          </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[13px] font-semibold text-foreground">معاذ الزاهد</div>
-            <div className="text-[11px] text-muted-foreground/80 truncate">moe@asimat.sa</div>
+            <div className="text-[13px] font-semibold text-foreground truncate">{userInfo?.name || '...'}</div>
+            <div className="text-[11px] text-muted-foreground/80 truncate">{userInfo?.email || ''}</div>
           </div>
         </div>
       </div>
+      {/* Functional Actions Only */}
       <div className="py-1">
-        <MenuItem icon={User} label={t('topbar.profile')} />
-        <MenuItem icon={Settings} label={t('topbar.settings')} shortcut="⌘ ," />
-        <MenuItem icon={Wallet} label={t('topbar.billing')} />
-        <MenuItem icon={Keyboard} label={t('topbar.shortcuts')} shortcut="⌘ /" />
+        <button 
+          onClick={() => router.push('/settings')}
+          className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-foreground hover:bg-muted transition-colors"
+        >
+          <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+          <span>{t('topbar.settings')}</span>
+        </button>
       </div>
       <div className="border-t border-border py-1">
-        <MenuItem icon={MessageSquare} label={t('topbar.support')} />
-        <MenuItem icon={ExternalLink} label={t('topbar.whats_new')} />
-      </div>
-      <div className="border-t border-border py-1">
-        <button onClick={onLogout} className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-[#E5484D] hover:bg-[#FEF1F1] transition-colors">
+        <button 
+          onClick={onLogout} 
+          className="w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] text-[#E5484D] hover:bg-[#FEF1F1] dark:hover:bg-red-900/20 transition-colors"
+        >
           <LogOut className="w-3.5 h-3.5" />
           <span>{t('topbar.logout')}</span>
         </button>
       </div>
     </div>
-  );
-}
-
-function MenuItem({ icon: Icon, label, shortcut }: any) {
-  return (
-    <button className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] text-foreground hover:bg-muted transition-colors">
-      <span className="flex items-center gap-2.5">
-        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-        <span>{label}</span>
-      </span>
-      {shortcut && <kbd className="text-[10px] text-muted-foreground/80 font-mono">{shortcut}</kbd>}
-    </button>
   );
 }

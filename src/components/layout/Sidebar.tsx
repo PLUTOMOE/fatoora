@@ -39,8 +39,8 @@ export function Sidebar() {
     {
       label: t('sidebar.operations'),
       items: [
-        { icon: ScrollText, label: t('sidebar.quotations'), href: '/quotations', count: 12, shortcut: 'G Q' },
-        { icon: Receipt, label: t('sidebar.invoices'), href: '/invoices', count: 38, shortcut: 'G I' }
+        { icon: ScrollText, label: t('sidebar.quotations'), href: '/quotations', shortcut: 'G Q' },
+        { icon: Receipt, label: t('sidebar.invoices'), href: '/invoices', shortcut: 'G I' }
       ]
     },
     {
@@ -85,7 +85,7 @@ export function Sidebar() {
             <>
               <div className="flex-1 min-w-0 text-right">
                 <div className="text-[13px] font-medium text-foreground truncate leading-tight">{activeEntity.name}</div>
-                <div className="text-[11px] text-muted-foreground/80 leading-tight">احترافي · 2/3 كيان</div>
+                <div className="text-[11px] text-muted-foreground/80 leading-tight">{activeEntity.short}</div>
               </div>
               <ChevronsUpDown className="w-3.5 h-3.5 text-muted-foreground/80 group-hover:text-muted-foreground flex-shrink-0" />
             </>
