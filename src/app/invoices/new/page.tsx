@@ -297,8 +297,8 @@ function InvoiceFormContent() {
 
   if (showPreview) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6 print:space-y-0">
+        <div className="flex items-center justify-between no-print">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setShowPreview(false)}
@@ -307,7 +307,7 @@ function InvoiceFormContent() {
               <ArrowRight className="w-5 h-5 text-foreground" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">معاينة الفاتورة</h1>
+              <h1 className="text-2xl font-bold text-foreground">الفاتورة</h1>
               <p className="text-sm text-muted-foreground mt-1">تأكد من شكل الفاتورة قبل الإصدار</p>
             </div>
           </div>
@@ -327,10 +327,10 @@ function InvoiceFormContent() {
           </div>
         </div>
 
-        <div className="w-full max-w-4xl mx-auto mt-6">
-          <div className="w-full overflow-hidden rounded-xl border border-border bg-card">
+        <div className="w-full max-w-4xl mx-auto mt-6 print:mt-0 print:max-w-none">
+          <div className="w-full overflow-hidden rounded-xl border border-border bg-card print:border-none print:rounded-none">
             <div className="w-full overflow-x-auto custom-scrollbar p-0">
-              <div className="min-w-[750px] w-full border border-gray-200">
+              <div className="min-w-[750px] w-full border border-gray-200 print:border-none print:min-w-0">
                  {renderTemplate()}
               </div>
             </div>

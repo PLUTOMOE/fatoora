@@ -258,8 +258,8 @@ function QuotationFormContent() {
 
   if (showPreview) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6 print:space-y-0">
+        <div className="flex items-center justify-between no-print">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setShowPreview(false)}
@@ -288,10 +288,10 @@ function QuotationFormContent() {
           </div>
         </div>
 
-        <div className="w-full max-w-4xl mx-auto mt-6">
-          <div className="w-full overflow-hidden rounded-xl border border-border bg-card">
+        <div className="w-full max-w-4xl mx-auto mt-6 print:mt-0 print:max-w-none">
+          <div className="w-full overflow-hidden rounded-xl border border-border bg-card print:border-none print:rounded-none">
             <div className="w-full overflow-x-auto custom-scrollbar p-0">
-              <div className="min-w-[750px] w-full border border-border">
+              <div className="min-w-[750px] w-full border border-border print:border-none print:min-w-0">
                  {renderTemplate()}
               </div>
             </div>
@@ -562,33 +562,78 @@ function QuotationFormContent() {
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => setShowSignature(!showSignature)}
+            onClick={() => {
+              if (settings.signature_url) {
+                setShowSignature(!showSignature);
+              } else {
+                // Direct upload
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e: any) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const url = ev.target?.result as string;
+                    setSettings((p: any) => ({ ...p, signature_url: url }));
+                    // Save to localStorage too
+                    const stored = localStorage.getItem('invoice_settings');
+                    const current = stored ? JSON.parse(stored) : {};
+                    localStorage.setItem('invoice_settings', JSON.stringify({ ...current, signature_url: url }));
+                    setShowSignature(true);
+                  };
+                  reader.readAsDataURL(file);
+                };
+                input.click();
+              }
+            }}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-              showSignature 
+              showSignature && settings.signature_url
                 ? 'border-primary bg-primary/5 text-primary shadow-sm' 
                 : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
             }`}
           >
             <PenTool className="w-4 h-4" />
-            {showSignature ? '✓ تم إضافة التوقيع' : 'إضافة التوقيع'}
+            {showSignature && settings.signature_url ? '✓ تم إضافة التوقيع' : settings.signature_url ? 'إضافة التوقيع' : '📤 رفع التوقيع'}
           </button>
           <button
             type="button"
-            onClick={() => setShowStamp(!showStamp)}
+            onClick={() => {
+              if (settings.stamp_url) {
+                setShowStamp(!showStamp);
+              } else {
+                // Direct upload
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e: any) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const url = ev.target?.result as string;
+                    setSettings((p: any) => ({ ...p, stamp_url: url }));
+                    // Save to localStorage too
+                    const stored = localStorage.getItem('invoice_settings');
+                    const current = stored ? JSON.parse(stored) : {};
+                    localStorage.setItem('invoice_settings', JSON.stringify({ ...current, stamp_url: url }));
+                    setShowStamp(true);
+                  };
+                  reader.readAsDataURL(file);
+                };
+                input.click();
+              }
+            }}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-              showStamp 
+              showStamp && settings.stamp_url
                 ? 'border-primary bg-primary/5 text-primary shadow-sm' 
                 : 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
             }`}
           >
             <Stamp className="w-4 h-4" />
-            {showStamp ? '✓ تم إضافة الختم' : 'إضافة الختم'}
+            {showStamp && settings.stamp_url ? '✓ تم إضافة الختم' : settings.stamp_url ? 'إضافة الختم' : '📤 رفع الختم'}
           </button>
-          {(!settings.stamp_url && !settings.signature_url) && (
-            <span className="text-[11px] text-muted-foreground/70 self-center mr-2">
-              💡 ارفع التوقيع والختم من الإعدادات أولاً
-            </span>
-          )}
         </div>
 
       </div>
