@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import { 
   Settings, Upload, Image, Stamp, PenLine, FileText, Check,
-  ChevronRight, Trash2, Eye
+  ChevronRight, Trash2, Loader2
 } from 'lucide-react';
 
 type TemplateType = 'classic' | 'modern' | 'minimal' | 'elite' | 'corporate' | 'compact' | 'royal' | 'executive';
@@ -31,6 +32,7 @@ const TEMPLATES: { id: TemplateType; name: string; nameAr: string; desc: string;
 
 export default function InvoicingSettingsPage() {
   const router = useRouter();
+  const supabase = createClient();
   const [settings, setSettings] = useState<InvoiceSettings>({
     template: 'elite',
     logo_url: '',
@@ -40,34 +42,59 @@ export default function InvoicingSettingsPage() {
     payment_terms: '30 يوم من تاريخ الإصدار',
   });
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('invoice_settings');
-    if (stored) {
-      try { setSettings(JSON.parse(stored)); } catch {}
-    }
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setUserId(user.id);
+
+      // Try to load from Supabase profiles table first
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('invoice_settings')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.invoice_settings) {
+        setSettings(profile.invoice_settings as InvoiceSettings);
+      } else {
+        // Fallback to localStorage for migration
+        const stored = localStorage.getItem('invoice_settings');
+        if (stored) {
+          try { setSettings(JSON.parse(stored)); } catch {}
+        }
+      }
+    };
+    load();
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (userId) {
+      await supabase.from('profiles').upsert({ id: userId, invoice_settings: settings });
+    }
+    // Keep localStorage as fallback
     localStorage.setItem('invoice_settings', JSON.stringify(settings));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const handleFileUpload = (field: 'logo_url' | 'stamp_url' | 'signature_url') => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e: any) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        setSettings(prev => ({ ...prev, [field]: ev.target?.result as string }));
-      };
-      reader.readAsDataURL(file);
-    };
-    input.click();
+  const handleFileUpload = async (field: 'logo_url' | 'stamp_url' | 'signature_url', file: File) => {
+    if (!userId) return;
+    setUploading(field);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `invoicing/${userId}/${field}.${ext}`;
+      const { error } = await supabase.storage.from('entity-assets').upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('entity-assets').getPublicUrl(path);
+      setSettings(prev => ({ ...prev, [field]: publicUrl }));
+    } catch (err: any) {
+      alert('خطأ في رفع الملف: ' + err.message);
+    }
+    setUploading(null);
   };
 
   return (
@@ -146,7 +173,8 @@ export default function InvoicingSettingsPage() {
             desc="يظهر في هيدر الفاتورة"
             icon={<Image className="w-5 h-5" />}
             preview={settings.logo_url}
-            onUpload={() => handleFileUpload('logo_url')}
+            uploading={uploading === 'logo_url'}
+            onUpload={(f) => handleFileUpload('logo_url', f)}
             onRemove={() => setSettings(p => ({ ...p, logo_url: '' }))}
           />
           <UploadCard
@@ -154,7 +182,8 @@ export default function InvoicingSettingsPage() {
             desc="يظهر في ذيل الفاتورة"
             icon={<Stamp className="w-5 h-5" />}
             preview={settings.stamp_url}
-            onUpload={() => handleFileUpload('stamp_url')}
+            uploading={uploading === 'stamp_url'}
+            onUpload={(f) => handleFileUpload('stamp_url', f)}
             onRemove={() => setSettings(p => ({ ...p, stamp_url: '' }))}
           />
           <UploadCard
@@ -162,7 +191,8 @@ export default function InvoicingSettingsPage() {
             desc="يظهر بجانب الختم"
             icon={<PenLine className="w-5 h-5" />}
             preview={settings.signature_url}
-            onUpload={() => handleFileUpload('signature_url')}
+            uploading={uploading === 'signature_url'}
+            onUpload={(f) => handleFileUpload('signature_url', f)}
             onRemove={() => setSettings(p => ({ ...p, signature_url: '' }))}
           />
         </div>
@@ -203,9 +233,9 @@ export default function InvoicingSettingsPage() {
   );
 }
 
-function UploadCard({ label, desc, icon, preview, onUpload, onRemove }: {
+function UploadCard({ label, desc, icon, preview, onUpload, onRemove, uploading }: {
   label: string; desc: string; icon: React.ReactNode; preview: string;
-  onUpload: () => void; onRemove: () => void;
+  onUpload: (file: File) => void; onRemove: () => void; uploading?: boolean;
 }) {
   return (
     <div className="bg-card border border-border rounded-xl p-4 flex flex-col">
@@ -223,26 +253,26 @@ function UploadCard({ label, desc, icon, preview, onUpload, onRemove }: {
         <div className="relative group flex-1 min-h-[100px] bg-background border border-border rounded-lg flex items-center justify-center overflow-hidden">
           <img src={preview} alt={label} className="max-h-24 max-w-full object-contain" />
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
-            <button onClick={onUpload} className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center hover:bg-white/30">
-              <Upload className="w-4 h-4 text-white" />
-            </button>
+            <label className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center hover:bg-white/30 cursor-pointer">
+              {uploading ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Upload className="w-4 h-4 text-white" />}
+              <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && onUpload(e.target.files[0])} />
+            </label>
             <button onClick={onRemove} className="w-8 h-8 bg-red-500/50 rounded-lg flex items-center justify-center hover:bg-red-500/70">
               <Trash2 className="w-4 h-4 text-white" />
             </button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={onUpload}
-          className="flex-1 min-h-[100px] border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-[#5B5BD6]/40 hover:text-[#5B5BD6] transition-colors"
-        >
-          <Upload className="w-5 h-5" />
-          <span className="text-xs">اضغط للرفع</span>
-        </button>
+        <label className="flex-1 min-h-[100px] border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-[#5B5BD6]/40 hover:text-[#5B5BD6] transition-colors cursor-pointer">
+          {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+          <span className="text-xs">{uploading ? 'جاري الرفع...' : 'اضغط للرفع'}</span>
+          <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && onUpload(e.target.files[0])} />
+        </label>
       )}
     </div>
   );
 }
+
 
 function TemplateMiniPreview({ type, colors }: { type: TemplateType; colors: string[] }) {
   if (type === 'elite') {
