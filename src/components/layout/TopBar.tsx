@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { 
-  Search, Bell, HelpCircle, ChevronDown, ChevronLeft, 
-  Settings, LogOut, Moon, Sun, Menu, User
+  Search, Bell, ChevronDown, ChevronLeft, 
+  Settings, LogOut, Moon, Sun, Menu, AlertCircle, Clock
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useStore } from '@/store/useStore';
@@ -15,6 +15,8 @@ export function TopBar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [userInfo, setUserInfo] = useState<{ name: string; email: string; initials: string } | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifCount, setNotifCount] = useState(0);
   
   useEffect(() => setMounted(true), []);
 
@@ -37,7 +39,18 @@ export function TopBar() {
         setUserInfo({ name, email: user.email || '', initials });
       }
     };
+    const loadNotifications = async () => {
+      try {
+        const res = await fetch('/api/notifications');
+        if (res.ok) {
+          const data = await res.json();
+          setNotifications(data.notifications || []);
+          setNotifCount(data.count || 0);
+        }
+      } catch {}
+    };
     loadUser();
+    loadNotifications();
   }, []);
 
   const handleLogout = async () => {
@@ -84,8 +97,13 @@ export function TopBar() {
               className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground/80 hover:text-foreground relative"
             >
               <Bell className="w-4 h-4" />
+              {notifCount > 0 && (
+                <span className="absolute top-1 left-1 w-4 h-4 bg-[#E5484D] rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+                  {notifCount > 9 ? '9+' : notifCount}
+                </span>
+              )}
             </button>
-            {showNotifications && <NotificationsDropdown />}
+            {showNotifications && <NotificationsDropdown notifications={notifications} router={router} onClose={() => setShowNotifications(false)} />}
           </div>
 
           <div className="relative mr-1">
@@ -118,16 +136,39 @@ export function TopBar() {
   );
 }
 
-function NotificationsDropdown() {
+function NotificationsDropdown({ notifications, router, onClose }: any) {
   return (
-    <div className="absolute top-full left-0 mt-1.5 w-[320px] bg-card border border-border rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.08)] animate-slideUp overflow-hidden">
+    <div className="absolute top-full left-0 mt-1.5 w-[340px] bg-card border border-border rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.08)] animate-slideUp overflow-hidden z-50">
       <div className="px-4 py-3 border-b border-border">
         <div className="text-[13px] font-semibold text-foreground">الإشعارات</div>
       </div>
-      <div className="px-4 py-8 text-center">
-        <Bell className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
-        <p className="text-[13px] text-muted-foreground">لا توجد إشعارات جديدة</p>
-      </div>
+      {notifications.length === 0 ? (
+        <div className="px-4 py-8 text-center">
+          <Bell className="w-8 h-8 text-muted-foreground/20 mx-auto mb-2" />
+          <p className="text-[13px] text-muted-foreground">لا توجد إشعارات جديدة</p>
+        </div>
+      ) : (
+        <div className="max-h-[360px] overflow-y-auto divide-y divide-border/50">
+          {notifications.map((n: any) => (
+            <button
+              key={n.id}
+              onClick={() => { router.push(`/invoices/${n.invoiceId}`); onClose(); }}
+              className="w-full text-right px-4 py-3 hover:bg-muted/50 transition-colors flex items-start gap-3"
+            >
+              <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{ background: n.color }} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium text-foreground">{n.title}</div>
+                <div className="text-[12px] text-muted-foreground truncate">{n.desc}</div>
+                <div className="text-[11px] text-muted-foreground/70 mt-0.5 flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {n.date ? new Date(n.date).toLocaleDateString('ar-SA') : ''}
+                  {n.amount ? ` · ${Number(n.amount).toLocaleString()} ر.س` : ''}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
