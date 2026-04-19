@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Building2, Loader2, ArrowLeft, Info, Landmark, 
-  Hash, ReceiptText, HelpCircle, Save, CheckSquare, Users, FileText, Phone, MapPin, Sun, Moon, LogOut
+  Hash, ReceiptText, HelpCircle, Save, CheckSquare, Users, FileText, Phone, MapPin, Sun, Moon, LogOut,
+  ImagePlus, X
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { createEntity } from '@/lib/supabase/services';
@@ -78,6 +79,7 @@ export default function SetupPage() {
     tax_number: '', 
     cr_number: '' 
   });
+  const [logoPreview, setLogoPreview] = useState<string>('');
 
   const validateField = (field: FieldName, value: string): string => {
     if (!value) return ''; // اختياري — فارغ = مقبول
@@ -135,6 +137,7 @@ export default function SetupPage() {
       if (newEntity.phone) payload.phone = newEntity.phone;
       if (newEntity.tax_number) payload.tax_number = newEntity.tax_number;
       if (newEntity.cr_number) payload.cr_number = newEntity.cr_number;
+      if (logoPreview) payload.logo_url = logoPreview;
       payload.short_name = newEntity.name.trim().substring(0, 3);
       payload.legal_type = 'مؤسسة فردية';
 
@@ -149,6 +152,14 @@ export default function SetupPage() {
       }
 
       setActiveEntity({ name: data.name, short: data.short_name || data.name.substring(0, 3) });
+
+      // Save logo to invoice settings too
+      if (logoPreview) {
+        const stored = localStorage.getItem('invoice_settings');
+        const current = stored ? JSON.parse(stored) : {};
+        localStorage.setItem('invoice_settings', JSON.stringify({ ...current, logo_url: logoPreview }));
+      }
+
       router.push('/');
     } catch (error: any) {
       console.error('Error creating company:', error);
@@ -254,6 +265,52 @@ export default function SetupPage() {
                   onChange={v => handleChange('name', v)}
                   error={fieldErrors.name}
                 />
+
+                {/* Logo Upload */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-[#191c1e] dark:text-[#e8e8f0] flex items-center gap-1.5">
+                    لوجو الشركة
+                    <span className="text-xs text-[#767683] dark:text-[#9090a8] font-normal">(اختياري)</span>
+                  </label>
+                  {logoPreview ? (
+                    <div className="relative inline-block">
+                      <div className="w-24 h-24 rounded-xl border-2 border-[#000666]/20 dark:border-[#7b8fff]/20 overflow-hidden bg-white dark:bg-[#2a2a40]">
+                        <img src={logoPreview} alt="Logo" className="w-full h-full object-contain p-2" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setLogoPreview('')}
+                        className="absolute -top-2 -left-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-sm"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = (e: any) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setLogoPreview(ev.target?.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        };
+                        input.click();
+                      }}
+                      className="flex items-center gap-3 w-full bg-[#e0e3e5] dark:bg-[#2a2a40] hover:bg-[#d5d8da] dark:hover:bg-[#353555] rounded-lg px-4 py-3.5 text-[#767683] dark:text-[#9090a8] text-sm transition-colors"
+                    >
+                      <ImagePlus className="w-5 h-5" />
+                      <span>اختر صورة اللوجو للشركة</span>
+                    </button>
+                  )}
+                  <p className="text-xs text-[#767683] dark:text-[#9090a8]">يظهر في الفواتير وعروض الأسعار</p>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <Field
