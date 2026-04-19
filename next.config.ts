@@ -5,9 +5,6 @@ const nextConfig: any = {
   turbopack: {
     root: process.cwd(),
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
