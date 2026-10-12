@@ -1,9 +1,36 @@
-// Types for Zajel Al Nokhba (زاجل النخبة)
+// Types for Zajel Al Nokhba & Multi-Company ERP
+
+export type ThemeMode = 'dark-sidebar' | 'light';
+
+export interface Company {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  taxNumber: string;
+  crNumber: string;
+  currency: string;
+  vatRate: number;
+  prefixQuotation: string;
+  prefixInvoice: string;
+  prefixReceipt: string;
+  prefixPayment: string;
+  bankName: string;
+  iban: string;
+  accountHolder: string;
+  quotationTerms: string;
+  invoiceTerms: string;
+  isDefault?: boolean;
+}
 
 export type CustomerType = 'individual' | 'business';
 
 export interface Customer {
   id: string;
+  companyId?: string;
   code: string;
   name: string;
   type: CustomerType;
@@ -23,6 +50,7 @@ export interface Customer {
 
 export interface ProductItem {
   id: string;
+  companyId?: string;
   code: string;
   name: string;
   description?: string;
@@ -49,6 +77,7 @@ export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'expi
 
 export interface Quotation {
   id: string;
+  companyId?: string;
   number: string;
   customerId: string;
   date: string;
@@ -71,6 +100,7 @@ export type InvoicePaymentStatus = 'unpaid' | 'partial' | 'paid';
 
 export interface Invoice {
   id: string;
+  companyId?: string;
   number: string;
   customerId: string;
   date: string;
@@ -118,6 +148,7 @@ export interface VoucherAllocation {
 
 export interface ReceiptVoucher {
   id: string;
+  companyId?: string;
   number: string;
   date: string;
   customerId: string;
@@ -137,6 +168,7 @@ export type PaymentVoucherType = 'expense' | 'refund';
 
 export interface PaymentVoucher {
   id: string;
+  companyId?: string;
   number: string;
   date: string;
   beneficiary: string;

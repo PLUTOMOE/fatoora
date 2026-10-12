@@ -11,8 +11,21 @@ import { useZajelStore } from '@/store/zajelStore';
 import { formatCurrency, formatDate } from '@/lib/zajelUtils';
 
 export default function DashboardPage() {
-  const { invoices, quotations, customers, getCustomerBalance } = useZajelStore();
+  const { invoices, quotations, customers, activeCompanyId, getCustomerBalance } = useZajelStore();
   const [period, setPeriod] = useState<'today' | 'month' | 'all'>('month');
+
+  // Filter invoices and quotations by company and period
+  const companyInvoices = useMemo(() => {
+    return invoices.filter(inv => !inv.companyId || inv.companyId === activeCompanyId);
+  }, [invoices, activeCompanyId]);
+
+  const companyQuotations = useMemo(() => {
+    return quotations.filter(q => !q.companyId || q.companyId === activeCompanyId);
+  }, [quotations, activeCompanyId]);
+
+  const companyCustomers = useMemo(() => {
+    return customers.filter(c => !c.companyId || c.companyId === activeCompanyId);
+  }, [customers, activeCompanyId]);
 
   // Filter invoices and quotations by period
   const filteredData = useMemo(() => {
@@ -20,8 +33,8 @@ export default function DashboardPage() {
     const todayStr = now.toISOString().split('T')[0];
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
 
-    let periodInvoices = invoices.filter(inv => inv.documentStatus === 'approved');
-    let periodQuotations = quotations;
+    let periodInvoices = companyInvoices.filter(inv => inv.documentStatus === 'approved');
+    let periodQuotations = companyQuotations;
 
     if (period === 'today') {
       periodInvoices = periodInvoices.filter(inv => inv.date === todayStr);
@@ -43,18 +56,18 @@ export default function DashboardPage() {
       totalDue,
       quotationsCount,
     };
-  }, [invoices, quotations, period]);
+  }, [companyInvoices, companyQuotations, period]);
 
   // Customers with due balances
   const customersWithDue = useMemo(() => {
-    return customers
+    return companyCustomers
       .map(c => ({
         ...c,
         balance: getCustomerBalance(c.id),
       }))
       .filter(c => c.balance > 0)
       .sort((a, b) => b.balance - a.balance);
-  }, [customers, getCustomerBalance]);
+  }, [companyCustomers, getCustomerBalance]);
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -224,8 +237,24 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {invoices.slice(0, 5).map((inv) => {
-                  const customer = customers.find(c => c.id === inv.customerId);
+                {companyInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                      <Receipt className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                      <p className="font-semibold text-xs text-slate-600">لا توجد فواتير مسجلة بعد في هذه الشركة</p>
+                      <p className="text-[11px] text-slate-400 mt-1">ابدأ بإصدار أول فاتورة مبيعات الآن</p>
+                      <Link
+                        href="/invoices/new"
+                        className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-lg bg-[#C59A55] text-white text-[11px] font-bold shadow-xs hover:bg-[#B38944]"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>فاتورة جديدة</span>
+                      </Link>
+                    </td>
+                  </tr>
+                ) : (
+                  companyInvoices.slice(0, 5).map((inv) => {
+                    const customer = companyCustomers.find(c => c.id === inv.customerId);
                   
                   // Status badge helper
                   const isPaid = inv.paymentStatus === 'paid';
@@ -282,7 +311,7 @@ export default function DashboardPage() {
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>

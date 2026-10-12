@@ -5,10 +5,14 @@ import { persist } from 'zustand/middleware';
 import { 
   Customer, ProductItem, Quotation, Invoice, 
   ReceiptVoucher, PaymentVoucher, CompanySettings, 
-  UserProfile, UserRole, StatementMovement 
+  UserProfile, UserRole, StatementMovement,
+  ThemeMode, Company 
 } from '@/types/zajel';
 
 interface ZajelState {
+  themeMode: ThemeMode;
+  companies: Company[];
+  activeCompanyId: string;
   settings: CompanySettings;
   user: UserProfile;
   customers: Customer[];
@@ -18,6 +22,17 @@ interface ZajelState {
   receiptVouchers: ReceiptVoucher[];
   paymentVouchers: PaymentVoucher[];
   
+  // Theme
+  setThemeMode: (mode: ThemeMode) => void;
+  toggleThemeMode: () => void;
+
+  // Multi-Company
+  addCompany: (company: Omit<Company, 'id'>) => string;
+  updateCompany: (id: string, company: Partial<Company>) => void;
+  deleteCompany: (id: string) => { success: boolean; message?: string };
+  setActiveCompany: (id: string) => void;
+  getActiveCompany: () => Company;
+
   // Actions
   updateSettings: (settings: Partial<CompanySettings>) => void;
   setUserRole: (role: UserRole) => void;
@@ -51,6 +66,7 @@ interface ZajelState {
   approveReceiptVoucher: (voucherId: string) => void;
   cancelReceiptVoucher: (voucherId: string) => void;
 
+  // Payment Vouchers
   addPaymentVoucher: (voucher: Omit<PaymentVoucher, 'id' | 'createdAt'>) => string;
   approvePaymentVoucher: (voucherId: string) => void;
   cancelPaymentVoucher: (voucherId: string) => void;
@@ -65,7 +81,7 @@ interface ZajelState {
     closingBalance: number;
   };
 
-  // Demo Data Reset
+  // Demo Data Reset & Clean Start
   resetToDemoData: () => void;
   clearAllData: () => void;
 }
@@ -91,6 +107,55 @@ const DEFAULT_SETTINGS: CompanySettings = {
   quotationTerms: 'العرض سارٍ لمدة 15 يوماً من تاريخ الإصدار. الأسعار تشمل ضريبة القيمة المضافة 15%. يتم سداد 50% مقدماً عند الاعتماد.',
   invoiceTerms: 'يرجى سداد المبلغ المستحق خلال 14 يوماً من تاريخ إصدار الفاتورة إلى الحساب البنكي الموضح أعلاه.',
 };
+
+const DEFAULT_COMPANIES: Company[] = [
+  {
+    id: 'comp-1',
+    name: 'زاجل النخبة',
+    logoUrl: '/logo-zajel-light.png',
+    phone: '0501234567',
+    email: 'info@zajel-alnokhba.sa',
+    address: 'طريق الملك فهد، حي الصحافة',
+    city: 'الرياض',
+    taxNumber: '310123456700003',
+    crNumber: '1010765432',
+    currency: 'ر.س',
+    vatRate: 15,
+    prefixQuotation: 'QUO-',
+    prefixInvoice: 'INV-',
+    prefixReceipt: 'RC-',
+    prefixPayment: 'PV-',
+    bankName: 'مصرف الراجحي',
+    iban: 'SA0380000000608010167519',
+    accountHolder: 'مؤسسة زاجل النخبة التجارية',
+    quotationTerms: 'العرض سارٍ لمدة 15 يوماً من تاريخ الإصدار. الأسعار تشمل ضريبة القيمة المضافة 15%. يتم سداد 50% مقدماً عند الاعتماد.',
+    invoiceTerms: 'يرجى سداد المبلغ المستحق خلال 14 يوماً من تاريخ إصدار الفاتورة إلى الحساب البنكي الموضح أعلاه.',
+    isDefault: true,
+  },
+  {
+    id: 'comp-2',
+    name: 'شركة المدى المتقدمة',
+    logoUrl: '',
+    phone: '0551122334',
+    email: 'info@almada-advanced.sa',
+    address: 'طريق الملك عبدالله، حي الواحة',
+    city: 'جدة',
+    taxNumber: '310998877600003',
+    crNumber: '4030112233',
+    currency: 'ر.س',
+    vatRate: 15,
+    prefixQuotation: 'MD-QUO-',
+    prefixInvoice: 'MD-INV-',
+    prefixReceipt: 'MD-RC-',
+    prefixPayment: 'MD-PV-',
+    bankName: 'البنك الأهلي السعودي (SNB)',
+    iban: 'SA4410000000987654321001',
+    accountHolder: 'شركة المدى المتقدمة للتجارة والخدمات',
+    quotationTerms: 'مدة صلاحية العرض 30 يوماً من تاريخ الإصدار.',
+    invoiceTerms: 'يرجى سداد المبلغ المستحق خلال 7 أيام من تاريخ الفاتورة.',
+    isDefault: false,
+  }
+];
 
 const DEFAULT_USER: UserProfile = {
   name: 'أحمد المدير',
@@ -490,17 +555,101 @@ const DEMO_PAYMENTS: PaymentVoucher[] = [
 export const useZajelStore = create<ZajelState>()(
   persist(
     (set, get) => ({
+      themeMode: 'light',
+      companies: DEFAULT_COMPANIES,
+      activeCompanyId: 'comp-1',
       settings: DEFAULT_SETTINGS,
       user: DEFAULT_USER,
-      customers: DEMO_CUSTOMERS,
-      products: DEMO_PRODUCTS,
-      quotations: DEMO_QUOTATIONS,
-      invoices: DEMO_INVOICES,
-      receiptVouchers: DEMO_RECEIPTS,
-      paymentVouchers: DEMO_PAYMENTS,
+      customers: [], // Clean state without demo records
+      products: [],
+      quotations: [],
+      invoices: [],
+      receiptVouchers: [],
+      paymentVouchers: [],
+
+      // Theme
+      setThemeMode: (mode) => set({ themeMode: mode }),
+      toggleThemeMode: () => set((state) => ({ themeMode: state.themeMode === 'light' ? 'dark-sidebar' : 'light' })),
+
+      // Multi-Company
+      addCompany: (compData) => {
+        const id = 'comp-' + Date.now();
+        const newComp: Company = { ...compData, id };
+        set((state) => ({
+          companies: [...state.companies, newComp],
+        }));
+        return id;
+      },
+
+      updateCompany: (id, data) => {
+        set((state) => {
+          const updatedCompanies = state.companies.map((c) =>
+            c.id === id ? { ...c, ...data } : c
+          );
+          const isCurrentActive = state.activeCompanyId === id;
+          return {
+            companies: updatedCompanies,
+            settings: isCurrentActive ? { ...state.settings, ...data } : state.settings,
+          };
+        });
+      },
+
+      deleteCompany: (id) => {
+        if (get().companies.length <= 1) {
+          return { success: false, message: 'لا يمكن حذف الشركة الوحيدة المتبقية في النظام.' };
+        }
+        if (get().activeCompanyId === id) {
+          const next = get().companies.find((c) => c.id !== id);
+          if (next) get().setActiveCompany(next.id);
+        }
+        set((state) => ({
+          companies: state.companies.filter((c) => c.id !== id),
+        }));
+        return { success: true };
+      },
+
+      setActiveCompany: (id) => {
+        const comp = get().companies.find((c) => c.id === id);
+        if (!comp) return;
+        set({
+          activeCompanyId: id,
+          settings: {
+            name: comp.name,
+            logoUrl: comp.logoUrl || '',
+            phone: comp.phone,
+            email: comp.email,
+            address: comp.address,
+            city: comp.city,
+            taxNumber: comp.taxNumber,
+            crNumber: comp.crNumber,
+            currency: comp.currency,
+            vatRate: comp.vatRate,
+            prefixQuotation: comp.prefixQuotation,
+            prefixInvoice: comp.prefixInvoice,
+            prefixReceipt: comp.prefixReceipt,
+            prefixPayment: comp.prefixPayment,
+            bankName: comp.bankName,
+            iban: comp.iban,
+            accountHolder: comp.accountHolder,
+            quotationTerms: comp.quotationTerms,
+            invoiceTerms: comp.invoiceTerms,
+          },
+        });
+      },
+
+      getActiveCompany: () => {
+        const state = get();
+        return state.companies.find((c) => c.id === state.activeCompanyId) || state.companies[0];
+      },
 
       updateSettings: (newSettings) =>
-        set((state) => ({ settings: { ...state.settings, ...newSettings } })),
+        set((state) => {
+          const updated = { ...state.settings, ...newSettings };
+          const updatedCompanies = state.companies.map((c) =>
+            c.id === state.activeCompanyId ? { ...c, ...newSettings } : c
+          );
+          return { settings: updated, companies: updatedCompanies };
+        }),
 
       setUserRole: (role) =>
         set((state) => ({ user: { ...state.user, role } })),
@@ -512,6 +661,7 @@ export const useZajelStore = create<ZajelState>()(
         const newCustomer: Customer = {
           ...customerData,
           id,
+          companyId: customerData.companyId || get().activeCompanyId,
           code: customerData.code || code,
           createdAt: new Date().toISOString(),
         };
@@ -550,7 +700,11 @@ export const useZajelStore = create<ZajelState>()(
       // === Product Operations ===
       addProduct: (prodData) => {
         const id = 'prod-' + Date.now();
-        const newProd: ProductItem = { ...prodData, id };
+        const newProd: ProductItem = { 
+          ...prodData, 
+          id,
+          companyId: prodData.companyId || get().activeCompanyId,
+        };
         set((state) => ({ products: [newProd, ...state.products] }));
         return id;
       },
@@ -569,6 +723,7 @@ export const useZajelStore = create<ZajelState>()(
         const newQuotation: Quotation = {
           ...quoData,
           id,
+          companyId: quoData.companyId || get().activeCompanyId,
           createdAt: new Date().toISOString(),
         };
         set((state) => ({ quotations: [newQuotation, ...state.quotations] }));
@@ -612,6 +767,7 @@ export const useZajelStore = create<ZajelState>()(
 
         const newInvoice: Invoice = {
           id: invoiceId,
+          companyId: quotation.companyId || get().activeCompanyId,
           number: invoiceNum,
           customerId: quotation.customerId,
           date: new Date().toISOString().split('T')[0],
@@ -667,6 +823,7 @@ export const useZajelStore = create<ZajelState>()(
         const newInvoice: Invoice = {
           ...invData,
           id,
+          companyId: invData.companyId || get().activeCompanyId,
           snapshotCustomer: invData.snapshotCustomer || (customer ? {
             name: customer.name,
             taxNumber: customer.taxNumber,
@@ -745,6 +902,7 @@ export const useZajelStore = create<ZajelState>()(
         const newVoucher: ReceiptVoucher = {
           ...voucherData,
           id,
+          companyId: voucherData.companyId || get().activeCompanyId,
           createdAt: new Date().toISOString(),
         };
 
@@ -838,6 +996,7 @@ export const useZajelStore = create<ZajelState>()(
         const newVoucher: PaymentVoucher = {
           ...voucherData,
           id,
+          companyId: voucherData.companyId || get().activeCompanyId,
           createdAt: new Date().toISOString(),
         };
         set((state) => ({ paymentVouchers: [newVoucher, ...state.paymentVouchers] }));
@@ -1017,15 +1176,16 @@ export const useZajelStore = create<ZajelState>()(
 
       // === Reset / Demo Handlers ===
       resetToDemoData: () => {
+        const compId = get().activeCompanyId;
         set({
           settings: DEFAULT_SETTINGS,
           user: DEFAULT_USER,
-          customers: DEMO_CUSTOMERS,
-          products: DEMO_PRODUCTS,
-          quotations: DEMO_QUOTATIONS,
-          invoices: DEMO_INVOICES,
-          receiptVouchers: DEMO_RECEIPTS,
-          paymentVouchers: DEMO_PAYMENTS,
+          customers: DEMO_CUSTOMERS.map((c) => ({ ...c, companyId: compId })),
+          products: DEMO_PRODUCTS.map((p) => ({ ...p, companyId: compId })),
+          quotations: DEMO_QUOTATIONS.map((q) => ({ ...q, companyId: compId })),
+          invoices: DEMO_INVOICES.map((i) => ({ ...i, companyId: compId })),
+          receiptVouchers: DEMO_RECEIPTS.map((r) => ({ ...r, companyId: compId })),
+          paymentVouchers: DEMO_PAYMENTS.map((p) => ({ ...p, companyId: compId })),
         });
       },
 
@@ -1041,7 +1201,7 @@ export const useZajelStore = create<ZajelState>()(
       },
     }),
     {
-      name: 'zajel-alnokhba-store-v1',
+      name: 'zajel-multicompany-store-v3',
     }
   )
 );
