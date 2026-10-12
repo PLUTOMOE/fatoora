@@ -54,6 +54,11 @@ export async function POST(req: NextRequest) {
       .from(bucketName)
       .getPublicUrl(finalPath);
 
+    const entityId = formData.get('entityId') as string | null;
+    if (entityId) {
+      await supabaseAdmin.from('entities').update({ logo_url: publicUrl }).eq('id', entityId);
+    }
+
     return NextResponse.json({ publicUrl, path: finalPath });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'فشل في رفع الملف' }, { status: 500 });

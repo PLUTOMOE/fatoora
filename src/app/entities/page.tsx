@@ -85,6 +85,7 @@ export default function EntitiesList() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('path', path);
+      formData.append('entityId', entity.id);
 
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -96,8 +97,6 @@ export default function EntitiesList() {
         throw new Error(errData.error || 'فشل في رفع الشعار');
       }
 
-      const { publicUrl } = await res.json();
-      await supabase.from('entities').update({ logo_url: publicUrl }).eq('id', entity.id);
       await fetchEntities();
     } catch (e: any) { alert('خطأ في رفع اللوجو: ' + e.message); }
     setLogoUploading(null);
