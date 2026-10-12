@@ -33,9 +33,10 @@ export async function proxy(request: NextRequest) {
 
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
   const isResetRoute = request.nextUrl.pathname.startsWith('/update-password')
+  const isApiRoute = request.nextUrl.pathname.startsWith('/api')
 
-  // إذا لم يكن مسجلا وحاول الدخول لصفحات محمية، وجهه لتسجيل الدخول
-  if (!user && !isAuthRoute && !isResetRoute) {
+  // إذا لم يكن مسجلا وحاول الدخول لصفحات محمية، وجهه لتسجيل الدخول (باستثناء مسارات API)
+  if (!user && !isAuthRoute && !isResetRoute && !isApiRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
