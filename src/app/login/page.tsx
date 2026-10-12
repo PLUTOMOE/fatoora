@@ -27,6 +27,18 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
 
+  const normalizeIdentifier = (val: string) => {
+    let normalized = val.trim().replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
+    if (!normalized.includes('@')) {
+      normalized = `${normalized}@fatoora.app`;
+    }
+    return normalized;
+  };
+
+  const normalizePassword = (val: string) => {
+    return val.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString());
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -34,13 +46,16 @@ export default function LoginPage() {
     setMessage(null);
 
     try {
+      const authEmail = normalizeIdentifier(email);
+      const authPassword = normalizePassword(password);
+
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
         if (error) throw error;
         router.push('/');
         router.refresh();
       } else {
-        const { error, data } = await supabase.auth.signUp({ email, password });
+        const { error, data } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
         if (error) throw error;
         if (data.user && !data.session) {
             setMessage('تم إنشاء الحساب بنجاح! راجع صندوق بريدك الإلكتروني لتأكيد الحساب والتمكن من تسجيل الدخول.');
@@ -53,9 +68,9 @@ export default function LoginPage() {
     } catch (err: any) {
       const errMsg = err.message || '';
       if (errMsg.includes('Invalid login') || errMsg.includes('credentials')) {
-          setError('البيانات المدخلة غير صحيحة، تأكد من البريد أو كلمة المرور');
+          setError('البيانات المدخلة غير صحيحة، تأكد من اسم المستخدم أو كلمة المرور');
       } else if (errMsg.includes('already registered')) {
-          setError('هذا البريد الإلكتروني مسجل بالفعل');
+          setError('هذا المستخدم مسجل بالفعل');
       } else if (errMsg.includes('Password should be at least')) {
           setError('كلمة المرور ضعيفة، يجب أن تتكون من 6 أحرف على الأقل');
       } else {
@@ -73,7 +88,8 @@ export default function LoginPage() {
     setMessage(null);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const authEmail = normalizeIdentifier(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
         redirectTo: `${window.location.origin}/update-password`,
       });
       if (error) throw error;
@@ -227,19 +243,23 @@ export default function LoginPage() {
                   <>
                   <form onSubmit={handleAuth} className="space-y-5">
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-[#dae2fd]">البريد الإلكتروني</label>
+                      <label className="block text-sm font-medium text-[#dae2fd]">
+                        {isLogin ? 'اسم المستخدم أو البريد الإلكتروني' : 'البريد الإلكتروني'}
+                      </label>
                       <div className="relative">
                         <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
                           <Mail className="w-5 h-5 text-[#777588]" />
                         </div>
                         <input 
-                          type="email" 
+                          type="text" 
                           value={email}
                           onChange={e => setEmail(e.target.value)}
                           required
+                          autoCapitalize="none"
+                          autoCorrect="off"
                           className="w-full bg-[#283044]/60 border border-[#c7c4d9]/20 rounded-xl py-3.5 pr-12 pl-4 text-white placeholder-[#777588] focus:border-[#3d32e6] focus:ring-1 focus:ring-[#3d32e6] transition-all text-left font-mono" 
                           dir="ltr" 
-                          placeholder="name@company.com" 
+                          placeholder={isLogin ? "1987 أو name@company.com" : "name@company.com"} 
                         />
                       </div>
                     </div>

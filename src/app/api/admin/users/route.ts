@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const SUPER_ADMIN_EMAIL = '38mhamdy@gmail.com';
+const SUPER_ADMIN_EMAIL = '1987@fatoora.app';
 
 const createAdminClient = () => {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {

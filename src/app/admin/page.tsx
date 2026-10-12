@@ -106,7 +106,7 @@ export default function SuperAdminDashboard() {
   useEffect(() => { fetchUsers(); }, []);
 
   const handleDeleteUser = async (userId: string, email: string) => {
-    if (email === '38mhamdy@gmail.com') {
+    if (email === '1987@fatoora.app') {
       alert('لا يمكن حذف حساب السوبر أدمن الأساسي!');
       return;
     }
@@ -201,7 +201,7 @@ export default function SuperAdminDashboard() {
                 <div>
                   <div className="text-[13px] font-semibold text-foreground flex items-center gap-1.5">
                     {u.user_metadata?.full_name || u.email.split('@')[0]}
-                    {u.email === '38mhamdy@gmail.com' && (
+                    {u.email === '1987@fatoora.app' && (
                       <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400 text-[10px] px-1.5 py-0.5 rounded-full font-bold">المالك</span>
                     )}
                   </div>
@@ -209,7 +209,7 @@ export default function SuperAdminDashboard() {
                 </div>
                 <button
                   onClick={() => handleDeleteUser(u.id, u.email)}
-                  disabled={deletingId === u.id || u.email === '38mhamdy@gmail.com'}
+                  disabled={deletingId === u.id || u.email === '1987@fatoora.app'}
                   className="text-[#E5484D] hover:bg-red-50 dark:hover:bg-red-900/20 p-1.5 rounded-lg transition-colors disabled:opacity-30"
                 >
                   {deletingId === u.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -260,7 +260,7 @@ export default function SuperAdminDashboard() {
                         <div>{u.user_metadata?.full_name || u.email.split('@')[0]}</div>
                         <div className="text-[11px] text-muted-foreground">{u.email}</div>
                       </div>
-                      {u.email === '38mhamdy@gmail.com' && (
+                      {u.email === '1987@fatoora.app' && (
                         <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[10px] px-1.5 py-0.5 rounded-full font-bold">مالك</span>
                       )}
                     </div>
@@ -275,7 +275,7 @@ export default function SuperAdminDashboard() {
                   <td className="px-5 py-3.5">
                     <button
                       onClick={() => handleDeleteUser(u.id, u.email)}
-                      disabled={deletingId === u.id || u.email === '38mhamdy@gmail.com'}
+                      disabled={deletingId === u.id || u.email === '1987@fatoora.app'}
                       className="flex items-center gap-1.5 text-[12px] text-[#E5484D] hover:bg-red-50 dark:hover:bg-red-900/20 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-30"
                     >
                       {deletingId === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
