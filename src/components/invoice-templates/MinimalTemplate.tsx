@@ -2,7 +2,7 @@ import React from 'react';
 import { InvoiceTemplateProps } from './types';
 import { getTemplateTranslations } from './translations';
 
-export function MinimalTemplate({ entity, customer, items, invoice, settings, type, language = 'ar' }: InvoiceTemplateProps) {
+export function MinimalTemplate({ entity, customer, items, invoice, settings, type, language = 'ar', qrCodeDataUrl }: InvoiceTemplateProps) {
   const isQuotation = type === 'quotation';
   const t = getTemplateTranslations(language);
   const docTitle = isQuotation ? t.quotation : t.invoice;
@@ -109,6 +109,12 @@ export function MinimalTemplate({ entity, customer, items, invoice, settings, ty
               </div>
             )}
           </div>
+          {!isQuotation && qrCodeDataUrl && (
+            <div className="text-center flex-shrink-0">
+              <img src={qrCodeDataUrl} alt="ZATCA QR" className="w-16 h-16 object-contain mx-auto border border-[#f0f0f0] rounded p-1 bg-white" />
+              <span className="text-[7px] text-[#aaa] uppercase font-mono block mt-0.5">ZATCA QR</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

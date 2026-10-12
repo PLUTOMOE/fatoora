@@ -16,6 +16,7 @@ import { RoyalTemplate } from '@/components/invoice-templates/RoyalTemplate';
 import { ExecutiveTemplate } from '@/components/invoice-templates/ExecutiveTemplate';
 import { useStore } from '@/store/useStore';
 import { createClient } from '@/lib/supabase/client';
+import { getNextDocumentNumber } from '@/lib/supabase/services';
 
 interface InvoiceItem {
   name: string;
@@ -43,6 +44,8 @@ function QuotationFormContent() {
   const [customerInfo, setCustomerInfo] = useState({ id: '', name: '', tax_number: '', address: '' });
   const [invoiceDates, setInvoiceDates] = useState({ date: new Date().toISOString().split('T')[0], due_date: '' });
   const [docNumber, setDocNumber] = useState(`Q-${new Date().getFullYear()}-001`);
+  const [discount, setDiscount] = useState<number>(0);
+  const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount');
   const [isSaving, setIsSaving] = useState(false);
   const [showStamp, setShowStamp] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
@@ -51,7 +54,7 @@ function QuotationFormContent() {
     { name: '', description: '', qty: 1, price: 0, tax_rate: 15 }
   ]);
 
-  // Fetch real entity data from DB
+  // Fetch real entity data from DB & auto-generate sequential document number
   useEffect(() => {
     const fetchEntity = async () => {
       if (!activeEntity?.name) return;
@@ -62,8 +65,13 @@ function QuotationFormContent() {
           .select('*')
           .eq('name', activeEntity.name)
           .single();
-        if (data) setEntityData(data);
-      } catch (e) { console.error('Failed to load entity', e); }
+        if (data) {
+          setEntityData(data);
+          // توليد الرقم التسلسلي التالي لعرض السعر تلقائياً
+          const nextNum = await getNextDocumentNumber(data.id, 'quotation');
+          if (nextNum) setDocNumber(nextNum);
+        }
+      } catch (e) { console.error('Failed to load entity or sequence', e); }
     };
     fetchEntity();
   }, [activeEntity?.name]);
@@ -120,10 +128,15 @@ function QuotationFormContent() {
     setItems(newItems);
   };
 
-  // Calculations
-  const subtotal = items.reduce((acc, item) => acc + (item.qty * item.price), 0);
-  const tax = items.reduce((acc, item) => acc + (item.qty * item.price * (item.tax_rate / 100)), 0);
-  const total = subtotal + tax;
+  // Calculations with Discount and Rounding
+  const subtotal = Math.round(items.reduce((acc, item) => acc + (item.qty * item.price), 0) * 100) / 100;
+  const discountVal = discountType === 'percent'
+    ? Math.round((subtotal * (discount / 100)) * 100) / 100
+    : Math.min(subtotal, Math.round(Number(discount || 0) * 100) / 100);
+  const taxableSubtotal = Math.max(0, subtotal - discountVal);
+  const taxRatio = subtotal > 0 ? taxableSubtotal / subtotal : 1;
+  const tax = Math.round(items.reduce((acc, item) => acc + (item.qty * item.price * (item.tax_rate / 100) * taxRatio), 0) * 100) / 100;
+  const total = Math.round((taxableSubtotal + tax) * 100) / 100;
 
   const invoiceDataPayload = {
     entity: {
@@ -147,7 +160,7 @@ function QuotationFormContent() {
       due_date: invoiceDates.due_date,
       subtotal,
       tax,
-      discount: 0,
+      discount: discountVal,
       total
     },
     settings: {
@@ -223,7 +236,7 @@ function QuotationFormContent() {
           due_date: invoiceDates.due_date || null,
           subtotal: subtotal,
           tax_total: tax,
-          discount: 0,
+          discount: discountVal,
           total: total,
           notes: notes || settings.default_notes
         })
@@ -240,7 +253,7 @@ function QuotationFormContent() {
           quantity: item.qty,
           unit_price: item.price,
           tax_rate: item.tax_rate,
-          total: item.qty * item.price * (1 + item.tax_rate / 100)
+          total: Math.round(item.qty * item.price * (1 + item.tax_rate / 100) * 100) / 100
         }));
         
         if (itemsToInsert.length > 0) {
@@ -543,6 +556,48 @@ function QuotationFormContent() {
                  <span className="text-muted-foreground">المجموع الفرعي (بدون ضريبة)</span>
                  <span className="font-medium tabular-nums">{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} ر.س</span>
                </div>
+
+               {/* خصم إضافي */}
+               <div className="flex items-center justify-between text-[14px] pt-1">
+                 <div className="flex items-center gap-2">
+                   <span className="text-muted-foreground">الخصم</span>
+                   <div className="inline-flex rounded-md border border-border p-0.5 bg-background text-[11px]">
+                     <button
+                       type="button"
+                       onClick={() => setDiscountType('amount')}
+                       className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${discountType === 'amount' ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                     >
+                       ر.س
+                     </button>
+                     <button
+                       type="button"
+                       onClick={() => setDiscountType('percent')}
+                       className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${discountType === 'percent' ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                     >
+                       %
+                     </button>
+                   </div>
+                 </div>
+                 <div className="w-28">
+                   <input
+                     type="number"
+                     min="0"
+                     max={discountType === 'percent' ? 100 : subtotal}
+                     value={discount || ''}
+                     onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                     placeholder="0.00"
+                     className="w-full text-left bg-background border border-border rounded-md px-2.5 py-1 text-sm outline-none focus:border-primary tabular-nums"
+                   />
+                 </div>
+               </div>
+
+               {discountVal > 0 && (
+                 <div className="flex justify-between text-[13px] text-red-500 font-medium">
+                   <span>مبلغ الخصم</span>
+                   <span className="tabular-nums">-{discountVal.toLocaleString(undefined, { minimumFractionDigits: 2 })} ر.س</span>
+                 </div>
+               )}
+
                <div className="flex justify-between text-[14px]">
                  <span className="text-muted-foreground">ضريبة القيمة المضافة (15%)</span>
                  <span className="font-medium tabular-nums text-primary">{tax.toLocaleString(undefined, { minimumFractionDigits: 2 })} ر.س</span>

@@ -2,7 +2,7 @@ import React from 'react';
 import { InvoiceTemplateProps } from './types';
 import { getTemplateTranslations } from './translations';
 
-export function CorporateTemplate({ entity, customer, items, invoice, settings, type, language = 'ar' }: InvoiceTemplateProps) {
+export function CorporateTemplate({ entity, customer, items, invoice, settings, type, language = 'ar', qrCodeDataUrl }: InvoiceTemplateProps) {
   const isQuotation = type === 'quotation';
   const t = getTemplateTranslations(language);
   const titleText = isQuotation ? t.quotation : t.invoice;
@@ -142,6 +142,12 @@ export function CorporateTemplate({ entity, customer, items, invoice, settings, 
               </div>
             )}
           </div>
+          {!isQuotation && qrCodeDataUrl && (
+            <div className="text-center flex-shrink-0">
+              <img src={qrCodeDataUrl} alt="ZATCA QR" className="w-20 h-20 object-contain mx-auto border border-gray-200 rounded-md p-1 bg-white" />
+              <span className="text-[8px] text-gray-400 uppercase font-semibold block mt-1 tracking-wider">QR Code · ZATCA</span>
+            </div>
+          )}
         </div>
       </div>
 

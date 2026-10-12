@@ -31,7 +31,7 @@ export async function GET() {
       .limit(5);
 
     const notifications = [
-      ...(overdue || []).map(inv => ({
+      ...(overdue || []).map((inv: any) => ({
         id: `overdue-${inv.id}`,
         type: 'overdue',
         title: 'فاتورة متأخرة',
@@ -41,7 +41,7 @@ export async function GET() {
         invoiceId: inv.id,
         color: '#E5484D',
       })),
-      ...(dueSoon || []).map(inv => ({
+      ...(dueSoon || []).map((inv: any) => ({
         id: `due-${inv.id}`,
         type: 'due_soon',
         title: 'فاتورة تستحق قريباً',

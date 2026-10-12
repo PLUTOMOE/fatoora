@@ -45,10 +45,26 @@ export default function Reports() {
         if (entId) {
           const { data } = await supabase
             .from('invoices')
-            .select('id, status, total, tax_total, subtotal, issue_date, due_date, customer_name, created_at')
+            .select('id, status, total, tax_total, subtotal, issue_date, due_date, created_at, type, customers(name)')
             .eq('entity_id', entId)
+            .neq('type', 'quotation')
             .order('created_at', { ascending: true });
-          setInvoices((data || []).filter(i => i.status !== 'draft'));
+            
+          const mapped: InvoiceRow[] = (data || [])
+            .filter((i: any) => i.status !== 'draft')
+            .map((i: any) => ({
+              id: i.id,
+              status: i.status,
+              total: Number(i.total || 0),
+              tax_total: Number(i.tax_total || 0),
+              subtotal: Number(i.subtotal || 0),
+              issue_date: i.issue_date,
+              due_date: i.due_date,
+              customer_name: (i.customers as any)?.name || null,
+              created_at: i.created_at,
+            }));
+            
+          setInvoices(mapped);
         }
       } catch (e) { console.error(e); }
       setLoading(false);

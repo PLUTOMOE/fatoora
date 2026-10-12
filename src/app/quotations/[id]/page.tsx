@@ -152,6 +152,16 @@ export default function QuotationDetail() {
     }
   };
 
+  const updateQuotationStatus = async (newStatus: 'accepted' | 'rejected') => {
+    try {
+      const supabase = createClient();
+      await supabase.from('invoices').update({ status: newStatus }).eq('id', id);
+      setData(prev => prev ? { ...prev, invoice: { ...prev.invoice, status: newStatus } } : null);
+    } catch (err: any) {
+      alert('حدث خطأ: ' + err.message);
+    }
+  };
+
   return (
     <div className="space-y-5 print:space-y-0">
       {/* Header - hidden in print */}
@@ -171,17 +181,34 @@ export default function QuotationDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {invoice.status !== 'accepted' && (
+            <button 
+              onClick={() => updateQuotationStatus('accepted')}
+              className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[12px] flex items-center gap-1.5 font-medium transition-colors"
+              title="قبول واعتماد عرض السعر"
+            >
+              <CheckCircle className="w-3.5 h-3.5" />
+              <span>قبول العرض</span>
+            </button>
+          )}
+
+          {invoice.status !== 'rejected' && invoice.status !== 'accepted' && (
+            <button 
+              onClick={() => updateQuotationStatus('rejected')}
+              className="h-8 px-3 bg-card border border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md text-[12px] flex items-center gap-1.5 font-medium transition-colors"
+              title="رفض عرض السعر"
+            >
+              <span>رفض</span>
+            </button>
+          )}
+
           <button 
             onClick={() => router.push(`/invoices/new?source_quotation_id=${invoice.id}`)}
-            className="h-8 px-3 bg-primary text-primary-foreground rounded-md text-[12px] hover:bg-primary/90 flex items-center gap-1.5 font-medium"
-            title="إنشاء فاتورة من هذا العرض"
+            className="h-8 px-3 bg-primary text-primary-foreground rounded-md text-[12px] hover:bg-primary/90 flex items-center gap-1.5 font-medium shadow-2xs"
+            title="إنشاء فاتورة رسمية من هذا العرض"
           >
             <CheckCircle className="w-3.5 h-3.5" />
             <span>تحويل لفاتورة</span>
-          </button>
-          <button className="h-8 px-3 bg-card border border-border rounded-md text-[12px] hover:border-border/80 flex items-center gap-1.5">
-            <Send className="w-3.5 h-3.5" />
-            <span>إرسال</span>
           </button>
           <button onClick={() => window.print()} className="h-8 px-3 bg-card border border-border rounded-md text-[12px] hover:border-border/80 flex items-center gap-1.5">
             <Printer className="w-3.5 h-3.5" />

@@ -2,7 +2,7 @@ import React from 'react';
 import { InvoiceTemplateProps } from './types';
 import { getTemplateTranslations } from './translations';
 
-export function EliteTemplate({ entity, customer, items, invoice, settings, type, language = 'ar' }: InvoiceTemplateProps) {
+export function EliteTemplate({ entity, customer, items, invoice, settings, type, language = 'ar', qrCodeDataUrl }: InvoiceTemplateProps) {
   const isQuotation = type === 'quotation';
   const t = getTemplateTranslations(language);
   const titleText = isQuotation ? t.quotation : t.invoice;
@@ -145,22 +145,30 @@ export function EliteTemplate({ entity, customer, items, invoice, settings, type
         </div>
       )}
 
-      {/* ═══════ STAMP & SIGNATURE ═══════ */}
-      {(settings.stamp_url || settings.signature_url) && (
+      {/* ═══════ STAMP & SIGNATURE & QR ═══════ */}
+      {(settings.stamp_url || settings.signature_url || (!isQuotation && qrCodeDataUrl)) && (
         <div className="px-8 pb-3">
-          <div className="flex items-end gap-8 pt-3 border-t border-gray-100">
-            {settings.stamp_url && (
-              <div className="text-center">
-                <img src={settings.stamp_url} alt="Stamp" className="w-16 h-16 object-contain opacity-85" style={{ mixBlendMode: 'multiply' }} />
-                <span className="text-[8px] text-gray-400 uppercase font-bold block">{t.companyStamp}</span>
-              </div>
-            )}
-            {settings.signature_url && (
-              <div className="text-center">
-                <img src={settings.signature_url} alt="Signature" className="w-24 h-12 object-contain" />
-                <div className="border-t border-gray-200 mt-1 pt-1">
-                  <span className="text-[8px] text-gray-400 uppercase font-bold">{t.authorizedSignature}</span>
+          <div className="flex items-end justify-between gap-8 pt-3 border-t border-gray-100">
+            <div className="flex items-end gap-8">
+              {settings.stamp_url && (
+                <div className="text-center">
+                  <img src={settings.stamp_url} alt="Stamp" className="w-16 h-16 object-contain opacity-85" style={{ mixBlendMode: 'multiply' }} />
+                  <span className="text-[8px] text-gray-400 uppercase font-bold block">{t.companyStamp}</span>
                 </div>
+              )}
+              {settings.signature_url && (
+                <div className="text-center">
+                  <img src={settings.signature_url} alt="Signature" className="w-24 h-12 object-contain" />
+                  <div className="border-t border-gray-200 mt-1 pt-1">
+                    <span className="text-[8px] text-gray-400 uppercase font-bold">{t.authorizedSignature}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            {!isQuotation && qrCodeDataUrl && (
+              <div className="text-center flex-shrink-0">
+                <img src={qrCodeDataUrl} alt="ZATCA QR" className="w-20 h-20 object-contain mx-auto border border-gray-100 rounded-md p-1 bg-white shadow-2xs" />
+                <span className="text-[8px] text-gray-400 uppercase font-semibold block mt-1 tracking-wider">QR Code · ZATCA</span>
               </div>
             )}
           </div>

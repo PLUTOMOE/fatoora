@@ -17,6 +17,8 @@ import { CompactTemplate } from '@/components/invoice-templates/CompactTemplate'
 import { RoyalTemplate } from '@/components/invoice-templates/RoyalTemplate';
 import { ExecutiveTemplate } from '@/components/invoice-templates/ExecutiveTemplate';
 import { createClient } from '@/lib/supabase/client';
+import QRCode from 'qrcode';
+import { getZatcaQRCode } from '@/lib/zatca';
 
 export default function InvoiceDetail() {
   const router = useRouter();
@@ -27,6 +29,7 @@ export default function InvoiceDetail() {
   const [data, setData] = useState<{ invoice: any, items: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [entityData, setEntityData] = useState<any>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [settings, setSettings] = useState<any>({
     template: 'elite',
     logo_url: '',
@@ -74,6 +77,26 @@ export default function InvoiceDetail() {
     };
     fetchInvoice();
   }, [id]);
+
+  // توليد رمز ZATCA QR Code بصيغة DataURL لدمجه بالقالب
+  useEffect(() => {
+    if (data?.invoice && data.invoice.type !== 'quotation') {
+      const inv = data.invoice;
+      const seller = entityData?.name || activeEntity?.name || 'الشركة';
+      const vatNum = entityData?.tax_number || activeEntity?.tax_number || '300000000000003';
+      const time = inv.created_at || (inv.issue_date ? `${inv.issue_date}T12:00:00Z` : new Date().toISOString());
+      const totalStr = Number(inv.total || 0).toFixed(2);
+      const vatStr = Number(inv.tax_total || 0).toFixed(2);
+      try {
+        const base64TLV = getZatcaQRCode(seller, vatNum, time, totalStr, vatStr);
+        QRCode.toDataURL(base64TLV, { errorCorrectionLevel: 'medium', margin: 1, width: 140 })
+          .then(url => setQrCodeDataUrl(url))
+          .catch(err => console.error('QR toDataURL error:', err));
+      } catch (e) {
+        console.error('Zatca QR generation error:', e);
+      }
+    }
+  }, [data, entityData, activeEntity]);
 
   if (loading) {
     return (
@@ -137,7 +160,8 @@ export default function InvoiceDetail() {
       notes: invoice.notes || '',
       template: settings.template
     },
-    type: (isQuotation ? 'quotation' : 'invoice') as 'quotation' | 'invoice'
+    type: (isQuotation ? 'quotation' : 'invoice') as 'quotation' | 'invoice',
+    qrCodeDataUrl: qrCodeDataUrl || undefined
   };
 
   const renderTemplate = () => {
@@ -196,9 +220,9 @@ export default function InvoiceDetail() {
             </div>
           </div>
 
-          {/* ZATCA QR Code - only for invoices */}
+          {/* ZATCA QR Code preview card - hidden in print because template contains integrated QR */}
           {!isQuotation && (
-            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 print:border-none print:p-0">
+            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 no-print">
               <ZatcaQRCode 
                 sellerName={activeEntity?.name} 
                 vatNumber={activeEntity?.tax_number || entityData?.tax_number}

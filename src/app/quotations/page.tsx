@@ -14,6 +14,8 @@ export default function QuotationsList() {
   const { activeEntity } = useStore();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'all' | 'accepted' | 'pending' | 'rejected'>('all');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (activeEntity.name) {
@@ -37,6 +39,23 @@ export default function QuotationsList() {
     } catch (e) { console.error(e); }
     setLoading(false);
   };
+
+  const acceptedCount = data.filter(i => i.status === 'accepted' || i.status === 'paid').length;
+  const pendingCount = data.filter(i => i.status === 'pending' || i.status === 'draft').length;
+  const rejectedCount = data.filter(i => i.status === 'rejected' || i.status === 'cancelled').length;
+
+  const displayedData = data.filter(item => {
+    if (activeTab === 'accepted' && item.status !== 'accepted' && item.status !== 'paid') return false;
+    if (activeTab === 'pending' && item.status !== 'pending' && item.status !== 'draft') return false;
+    if (activeTab === 'rejected' && item.status !== 'rejected' && item.status !== 'cancelled') return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      const numMatch = (item.invoice_number || '').toLowerCase().includes(q);
+      const custMatch = (item.customers?.name || '').toLowerCase().includes(q);
+      return numMatch || custMatch;
+    }
+    return true;
+  });
 
   if (loading) {
     return <div className="flex h-[400px] items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/80" /></div>;
@@ -74,15 +93,42 @@ export default function QuotationsList() {
       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
         <div className="p-3 border-b border-border flex flex-wrap gap-2 items-center justify-between bg-background">
           <div className="flex items-center gap-1.5">
-            <button className="h-7 px-3 bg-card border border-border rounded-md text-[11px] font-medium text-foreground shadow-sm">الكل ({data.length})</button>
-            <button className="h-7 px-3 bg-transparent text-muted-foreground hover:text-foreground rounded-md text-[11px] font-medium transition-colors">مقبول (0)</button>
-            <button className="h-7 px-3 bg-transparent text-muted-foreground hover:text-foreground rounded-md text-[11px] font-medium transition-colors">مرفوض (0)</button>
+            <button 
+              onClick={() => setActiveTab('all')}
+              className={`h-7 px-3 rounded-md text-[11px] font-medium transition-colors ${activeTab === 'all' ? 'bg-card border border-border text-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:text-foreground'}`}
+            >
+              الكل ({data.length})
+            </button>
+            <button 
+              onClick={() => setActiveTab('accepted')}
+              className={`h-7 px-3 rounded-md text-[11px] font-medium transition-colors ${activeTab === 'accepted' ? 'bg-card border border-border text-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:text-foreground'}`}
+            >
+              مقبول / معتمد ({acceptedCount})
+            </button>
+            <button 
+              onClick={() => setActiveTab('pending')}
+              className={`h-7 px-3 rounded-md text-[11px] font-medium transition-colors ${activeTab === 'pending' ? 'bg-card border border-border text-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:text-foreground'}`}
+            >
+              في الانتظار ({pendingCount})
+            </button>
+            <button 
+              onClick={() => setActiveTab('rejected')}
+              className={`h-7 px-3 rounded-md text-[11px] font-medium transition-colors ${activeTab === 'rejected' ? 'bg-card border border-border text-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:text-foreground'}`}
+            >
+              مرفوض ({rejectedCount})
+            </button>
           </div>
           
           <div className="flex items-center gap-2">
             <div className="relative w-[240px]">
               <Search className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/80" />
-              <input type="text" placeholder="بحث برقم العرض..." className="w-full pr-8 pl-3 h-7 bg-card border border-border rounded-md text-[11px] focus:outline-none focus:border-[#5B5BD6]" />
+              <input 
+                type="text" 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="بحث برقم العرض أو العميل..." 
+                className="w-full pr-8 pl-3 h-7 bg-card border border-border rounded-md text-[11px] focus:outline-none focus:border-[#5B5BD6]" 
+              />
             </div>
             <button className="h-7 px-2.5 bg-card border border-border rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground">
               <Filter className="w-3.5 h-3.5" />
@@ -91,49 +137,49 @@ export default function QuotationsList() {
         </div>
 
         <div className="overflow-x-auto min-h-[300px]">
-          {data.length === 0 ? (
+          {displayedData.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
               <ScrollText className="w-8 h-8 text-muted-foreground/40 mb-3" />
-              <p className="text-[13px]">لا يوجد عروض أسعار في هذا الكيان</p>
+              <p className="text-[13px]">لا يوجد عروض أسعار تطابق هذا الفلتر</p>
               <button onClick={() => router.push('/quotations/new')} className="mt-4 text-[12px] text-[#5B5BD6] font-medium hover:underline">
-                أضف أول عرض سعر الآن
+                أضف عرض سعر جديد الآن
               </button>
             </div>
           ) : (
             <div className="overflow-x-auto overflow-y-hidden">
-<table className="w-full text-right">
-              <thead>
-                <tr className="border-b border-border text-[11px] font-medium text-muted-foreground bg-card">
-                  <th className="py-2.5 px-4 w-12 text-center"><input type="checkbox" className="rounded-sm border-border accent-[#5B5BD6]" /></th>
-                  <th className="py-2.5 px-4 font-medium">{t('pages.quotations.number')}</th>
-                  <th className="py-2.5 px-4 font-medium">{t('pages.quotations.customer')}</th>
-                  <th className="py-2.5 px-4 font-medium">تاريخ العرض</th>
-                  <th className="py-2.5 px-4 font-medium">{t('pages.quotations.status')}</th>
-                  <th className="py-2.5 px-4 font-medium text-left w-32">الإجمالي</th>
-                  <th className="py-2.5 px-4 w-12"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((q) => (
-                  <tr key={q.id} onClick={() => router.push(`/quotations/${q.id}`)} className="border-b border-border/50 last:border-0 hover:bg-background transition-colors group text-[13px] cursor-pointer">
-                    <td className="py-3 px-4 text-center"><input type="checkbox" className="rounded-sm border-border accent-[#5B5BD6] opacity-50 group-hover:opacity-100" /></td>
-                    <td className="py-3 px-4">
-                      <div className="font-mono font-medium text-foreground">{q.invoice_number}</div>
-                    </td>
-                    <td className="py-3 px-4 text-foreground">{q.customers?.name || 'عميل غير محدد'}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{new Date(q.created_at).toLocaleDateString('ar-SA')}</td>
-                    <td className="py-3 px-4"><StatusPill status={q.status as any} /></td>
-                    <td className="py-3 px-4 text-left font-medium text-foreground tabular-nums">{q.total} ر.س</td>
-                    <td className="py-3 px-4 text-left">
-                      <button className="opacity-0 group-hover:opacity-100 w-7 h-7 inline-flex items-center justify-center hover:bg-border rounded transition-all">
-                        <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    </td>
+              <table className="w-full text-right">
+                <thead>
+                  <tr className="border-b border-border text-[11px] font-medium text-muted-foreground bg-card">
+                    <th className="py-2.5 px-4 w-12 text-center"><input type="checkbox" className="rounded-sm border-border accent-[#5B5BD6]" /></th>
+                    <th className="py-2.5 px-4 font-medium">{t('pages.quotations.number')}</th>
+                    <th className="py-2.5 px-4 font-medium">{t('pages.quotations.customer')}</th>
+                    <th className="py-2.5 px-4 font-medium">تاريخ العرض</th>
+                    <th className="py-2.5 px-4 font-medium">{t('pages.quotations.status')}</th>
+                    <th className="py-2.5 px-4 font-medium text-left w-32">الإجمالي</th>
+                    <th className="py-2.5 px-4 w-12"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-</div>
+                </thead>
+                <tbody>
+                  {displayedData.map((q) => (
+                    <tr key={q.id} onClick={() => router.push(`/quotations/${q.id}`)} className="border-b border-border/50 last:border-0 hover:bg-background transition-colors group text-[13px] cursor-pointer">
+                      <td className="py-3 px-4 text-center"><input type="checkbox" className="rounded-sm border-border accent-[#5B5BD6] opacity-50 group-hover:opacity-100" /></td>
+                      <td className="py-3 px-4">
+                        <div className="font-mono font-medium text-foreground">{q.invoice_number}</div>
+                      </td>
+                      <td className="py-3 px-4 text-foreground">{q.customers?.name || 'عميل غير محدد'}</td>
+                      <td className="py-3 px-4 text-muted-foreground">{new Date(q.created_at).toLocaleDateString('ar-SA')}</td>
+                      <td className="py-3 px-4"><StatusPill status={q.status as any} /></td>
+                      <td className="py-3 px-4 text-left font-medium text-foreground tabular-nums">{Number(q.total || 0).toLocaleString()} ر.س</td>
+                      <td className="py-3 px-4 text-left">
+                        <button className="opacity-0 group-hover:opacity-100 w-7 h-7 inline-flex items-center justify-center hover:bg-border rounded transition-all">
+                          <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

@@ -36,4 +36,5 @@ export interface InvoiceTemplateProps {
   };
   type: 'invoice' | 'quotation';
   language?: 'ar' | 'en';
+  qrCodeDataUrl?: string;
 }

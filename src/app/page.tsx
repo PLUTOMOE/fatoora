@@ -17,13 +17,18 @@ export default function Dashboard() {
     const loadData = async () => {
       const supabase = createClient();
       
-      // جلب أحدث 5 فواتير
-      const { data: inv } = await supabase.from('invoices').select('*').order('created_at', { ascending: false }).limit(5);
+      // جلب أحدث 5 فواتير (استبعاد عروض الأسعار)
+      const { data: inv } = await supabase
+        .from('invoices')
+        .select('*, customers(name)')
+        .neq('type', 'quotation')
+        .order('created_at', { ascending: false })
+        .limit(5);
       if (inv) setInvoices(inv);
 
-      // جلب الإحصائيات
+      // جلب الإحصائيات (الفواتير الفعلية فقط)
       const [{ count: invCount }, { count: custCount }, { count: prodCount }] = await Promise.all([
-        supabase.from('invoices').select('*', { count: 'exact', head: true }),
+        supabase.from('invoices').select('*', { count: 'exact', head: true }).neq('type', 'quotation'),
         supabase.from('customers').select('*', { count: 'exact', head: true }),
         supabase.from('products').select('*', { count: 'exact', head: true }),
       ]);
@@ -43,7 +48,7 @@ export default function Dashboard() {
       {/* Main Action Buttons */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <button
-          onClick={() => router.push('/invoices')}
+          onClick={() => router.push('/invoices/new')}
           className="group relative overflow-hidden bg-gradient-to-br from-[#1a1a2e] to-[#2d2d5e] dark:from-[#1e1e30] dark:to-[#2a2a50] text-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
         >
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -132,9 +137,9 @@ export default function Dashboard() {
                 {invoices.map((row, i) => (
                   <tr key={i} onClick={() => router.push(`/invoices/${row.id}`)} className="border-b border-border/50 last:border-0 hover:bg-background transition-colors cursor-pointer">
                     <td className="px-5 py-3">
-                      <div className="font-mono text-[12px] text-foreground">INV-{String(row.id).padStart(4, '0')}</div>
+                      <div className="font-mono text-[12px] text-foreground font-medium">{row.invoice_number || `INV-${String(i + 1).padStart(3, '0')}`}</div>
                     </td>
-                    <td className="px-5 py-3 text-foreground">{row.customer_name || '—'}</td>
+                    <td className="px-5 py-3 text-foreground">{row.customers?.name || 'عميل غير محدد'}</td>
                     <td className="px-5 py-3"><StatusPill status={row.status || 'pending'} /></td>
                     <td className="px-5 py-3 text-left tabular-nums font-medium text-foreground">
                       {Number(row.total || 0).toLocaleString()} <span className="text-[10px] text-muted-foreground/80 font-normal">{t('common.sar')}</span>
@@ -175,7 +180,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <QuickAction icon={Sparkles} title="قراءة عرض خارجي" desc="حوّل أي عرض لفاتورة" badge="AI" onClick={() => router.push('/ai-reader')} />
           <QuickAction icon={ScrollText} title={t('dashboard.new_quotation')} desc="أنشئ عرض احترافي" onClick={() => router.push('/quotations/new')} />
-          <QuickAction icon={Receipt} title="فاتورة سريعة" desc="فاتورة ضريبية في ثواني" onClick={() => router.push('/invoices')} />
+          <QuickAction icon={Receipt} title="فاتورة سريعة" desc="فاتورة ضريبية في ثواني" onClick={() => router.push('/invoices/new')} />
           <QuickAction icon={Users} title="إضافة عميل" desc="سجّل عميل جديد" onClick={() => router.push('/customers')} />
         </div>
       </div>

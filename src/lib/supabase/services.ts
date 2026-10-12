@@ -79,3 +79,45 @@ export async function getInvoiceDetails(invoiceId: string) {
 
   return { invoice: data, items };
 }
+
+// === توليد الرقم التسلسلي التلقائي للمستندات ===
+export async function getNextDocumentNumber(entityId: string, type: 'quotation' | 'invoice'): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = type === 'quotation' ? `Q-${year}-` : `INV-${year}-`;
+  
+  try {
+    let query = supabase
+      .from('invoices')
+      .select('invoice_number')
+      .eq('entity_id', entityId)
+      .ilike('invoice_number', `${prefix}%`)
+      .order('created_at', { ascending: false })
+      .limit(100);
+      
+    if (type === 'quotation') {
+      query = query.eq('type', 'quotation');
+    } else {
+      query = query.neq('type', 'quotation');
+    }
+    
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) {
+      return `${prefix}001`;
+    }
+    
+    let maxNum = 0;
+    for (const row of data) {
+      const numPart = row.invoice_number?.replace(prefix, '').trim();
+      const num = parseInt(numPart, 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+    
+    const nextNum = maxNum + 1;
+    return `${prefix}${String(nextNum).padStart(3, '0')}`;
+  } catch (err) {
+    console.error('Error generating next document number:', err);
+    return `${prefix}001`;
+  }
+}
