@@ -25,6 +25,10 @@ export default function NewInvoicePage() {
   // Quick Customer modal
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [newCustName, setNewCustName] = useState('');
+  const [newCustTax, setNewCustTax] = useState('');
+  const [newCustCr, setNewCustCr] = useState('');
+  const [newCustAddress, setNewCustAddress] = useState('');
+  const [newCustNationalAddress, setNewCustNationalAddress] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
 
   // Default items matching mockup 3
@@ -152,6 +156,7 @@ export default function NewInvoicePage() {
         crNumber: selectedCustomer.crNumber,
         phone: selectedCustomer.phone,
         address: selectedCustomer.address,
+        nationalAddress: selectedCustomer.nationalAddress,
       } : undefined,
       snapshotCompany: {
         name: settings.name,
@@ -177,6 +182,10 @@ export default function NewInvoicePage() {
     const newId = addCustomer({
       code: `CUST-${String(customers.length + 1).padStart(3, '0')}`,
       name: newCustName.trim(),
+      taxNumber: newCustTax.trim() || undefined,
+      crNumber: newCustCr.trim() || undefined,
+      address: newCustAddress.trim() || undefined,
+      nationalAddress: newCustNationalAddress.trim() || undefined,
       phone: newCustPhone.trim() || '0500000000',
       type: 'business',
       status: 'active',
@@ -188,6 +197,10 @@ export default function NewInvoicePage() {
     setCustomerId(newId);
     setShowAddCustomer(false);
     setNewCustName('');
+    setNewCustTax('');
+    setNewCustCr('');
+    setNewCustAddress('');
+    setNewCustNationalAddress('');
     setNewCustPhone('');
   };
 
@@ -514,20 +527,82 @@ export default function NewInvoicePage() {
       {/* Quick Add Customer Modal */}
       {showAddCustomer && (
         <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-200">
-            <h3 className="text-base font-bold text-[#202D3B] mb-3">إضافة عميل جديد سريعاً</h3>
-            <form onSubmit={handleQuickAddCustomer} className="space-y-3 text-xs">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">اسم العميل أو المنشأة *</label>
+                <h3 className="text-base font-bold text-[#202D3B]">إضافة عميل جديد سريعاً</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">بيانات الشركة أو المؤسسة والبيانات الضريبية</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddCustomer(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAddCustomer} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">اسم الشركة أو المؤسسة *</label>
                 <input
                   type="text"
                   required
                   value={newCustName}
                   onChange={(e) => setNewCustName(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-[#C59A55]"
-                  placeholder="مثال: شركة التطوير الحديثة"
+                  placeholder="مثال: شركة التطوير الحديثة للمقاولات"
                 />
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">الرقم الضريبي (15 رقم)</label>
+                  <input
+                    type="text"
+                    maxLength={15}
+                    value={newCustTax}
+                    onChange={(e) => setNewCustTax(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono outline-none focus:border-[#C59A55]"
+                    placeholder="300XXXXXXXXXXX3"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">السجل التجاري</label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    value={newCustCr}
+                    onChange={(e) => setNewCustCr(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono outline-none focus:border-[#C59A55]"
+                    placeholder="1010XXXXXX"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">العنوان</label>
+                  <input
+                    type="text"
+                    value={newCustAddress}
+                    onChange={(e) => setNewCustAddress(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-[#C59A55]"
+                    placeholder="مثال: الرياض - طريق الملك فهد"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">العنوان الوطني</label>
+                  <input
+                    type="text"
+                    value={newCustNationalAddress}
+                    onChange={(e) => setNewCustNationalAddress(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-[#C59A55]"
+                    placeholder="مثال: 1234 الرياض 5678"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">رقم الجوال *</label>
                 <input
@@ -535,21 +610,22 @@ export default function NewInvoicePage() {
                   required
                   value={newCustPhone}
                   onChange={(e) => setNewCustPhone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-[#C59A55]"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono outline-none focus:border-[#C59A55]"
                   placeholder="05XXXXXXXX"
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-3">
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowAddCustomer(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#C59A55] text-white font-bold hover:bg-[#B38944]"
+                  className="px-5 py-2 rounded-xl bg-[#C59A55] text-white font-bold hover:bg-[#B38944] shadow-md shadow-[#C59A55]/20"
                 >
                   إضافة العميل
                 </button>

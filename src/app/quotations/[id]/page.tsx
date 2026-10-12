@@ -157,6 +157,12 @@ function QuotationDetail({ params }: { params: Promise<{ id: string }> }) {
             <span className="text-slate-400 block mb-1">بيانات العميل الموجه إليه العرض:</span>
             <div className="font-bold text-sm text-[#202D3B]">{customer?.name || 'العميل'}</div>
             {customer?.address && <div className="text-slate-600 mt-0.5">{customer.address}</div>}
+            {customer?.nationalAddress && (
+              <div className="text-slate-500 mt-0.5 text-[11px]">
+                <span className="text-slate-400">العنوان الوطني: </span>
+                <span>{customer.nationalAddress}</span>
+              </div>
+            )}
             {customer?.phone && <div className="text-slate-500 mt-0.5 font-mono">{customer.phone}</div>}
           </div>
           <div className="text-left" dir="ltr">

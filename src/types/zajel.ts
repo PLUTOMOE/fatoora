@@ -37,6 +37,7 @@ export interface Customer {
   phone: string;
   email?: string;
   address?: string;
+  nationalAddress?: string; // العنوان الوطني
   city?: string;
   taxNumber?: string;
   crNumber?: string;
@@ -123,6 +124,7 @@ export interface Invoice {
     crNumber?: string;
     phone?: string;
     address?: string;
+    nationalAddress?: string;
   };
   snapshotCompany?: {
     name: string;

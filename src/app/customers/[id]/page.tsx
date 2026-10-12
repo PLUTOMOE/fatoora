@@ -18,8 +18,42 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
 
   const [activeTab, setActiveTab] = useState<'invoices' | 'receipts' | 'quotations'>('invoices');
 
+  // Edit Customer Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editTax, setEditTax] = useState('');
+  const [editCr, setEditCr] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editNationalAddress, setEditNationalAddress] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+
   const customer = customers.find((c) => c.id === resolvedParams.id);
   const balance = customer ? getCustomerBalance(customer.id) : 0;
+
+  const openEdit = () => {
+    if (!customer) return;
+    setEditName(customer.name);
+    setEditTax(customer.taxNumber || '');
+    setEditCr(customer.crNumber || '');
+    setEditAddress(customer.address || '');
+    setEditNationalAddress(customer.nationalAddress || '');
+    setEditPhone(customer.phone || '');
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customer || !editName.trim()) return;
+    updateCustomer(customer.id, {
+      name: editName.trim(),
+      taxNumber: editTax.trim() || undefined,
+      crNumber: editCr.trim() || undefined,
+      address: editAddress.trim() || undefined,
+      nationalAddress: editNationalAddress.trim() || undefined,
+      phone: editPhone.trim() || customer.phone,
+    });
+    setShowEditModal(false);
+  };
 
   const customerInvoices = useMemo(() => {
     if (!customer) return [];
@@ -76,6 +110,14 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={openEdit}
+            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors"
+          >
+            <Edit3 className="w-4 h-4 text-[#C59A55]" />
+            <span>تعديل البيانات</span>
+          </button>
+
           <Link
             href={`/customers/${customer.id}/statement`}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white text-xs font-bold shadow-md shadow-[#C59A55]/20 transition-all"
@@ -147,7 +189,7 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
       </div>
 
       {/* Profile Details & Contact Box */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
         <div>
           <span className="text-slate-400 block mb-1">رقم الجوال</span>
           <span className="font-mono font-bold text-slate-800">{customer.phone}</span>
@@ -163,6 +205,10 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
         <div>
           <span className="text-slate-400 block mb-1">العنوان</span>
           <span className="text-slate-800">{customer.address || customer.city || 'غير محدد'}</span>
+        </div>
+        <div>
+          <span className="text-slate-400 block mb-1">العنوان الوطني</span>
+          <span className="text-slate-800">{customer.nationalAddress || 'غير محدد'}</span>
         </div>
       </div>
 
@@ -296,6 +342,115 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
           )}
         </div>
       </div>
+
+      {/* Edit Customer Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-[#202D3B]">تعديل بيانات العميل</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">تحديث بيانات المنشأة والعنوان والبيانات الضريبية</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">اسم الشركة أو المؤسسة *</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-[#C59A55]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">الرقم الضريبي (15 رقم)</label>
+                  <input
+                    type="text"
+                    maxLength={15}
+                    value={editTax}
+                    onChange={(e) => setEditTax(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono outline-none focus:border-[#C59A55]"
+                    placeholder="300XXXXXXXXXXX3"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">السجل التجاري</label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    value={editCr}
+                    onChange={(e) => setEditCr(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono outline-none focus:border-[#C59A55]"
+                    placeholder="1010XXXXXX"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">العنوان</label>
+                  <input
+                    type="text"
+                    value={editAddress}
+                    onChange={(e) => setEditAddress(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-[#C59A55]"
+                    placeholder="الرياض - طريق الملك فهد"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">العنوان الوطني</label>
+                  <input
+                    type="text"
+                    value={editNationalAddress}
+                    onChange={(e) => setEditNationalAddress(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-[#C59A55]"
+                    placeholder="1234 الرياض 5678"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">رقم الجوال *</label>
+                <input
+                  type="text"
+                  required
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono outline-none focus:border-[#C59A55]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 font-semibold"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#C59A55] text-white font-bold hover:bg-[#B38944] shadow-md shadow-[#C59A55]/20"
+                >
+                  حفظ التعديلات
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

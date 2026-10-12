@@ -16,6 +16,7 @@ export default function NewCustomerPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  const [nationalAddress, setNationalAddress] = useState('');
   const [city, setCity] = useState('الرياض');
   const [taxNumber, setTaxNumber] = useState('');
   const [crNumber, setCrNumber] = useState('');
@@ -37,6 +38,7 @@ export default function NewCustomerPage() {
       phone: phone.trim() || '0500000000',
       email: email.trim() || undefined,
       address: address.trim() || undefined,
+      nationalAddress: nationalAddress.trim() || undefined,
       city: city.trim() || undefined,
       taxNumber: taxNumber.trim() || undefined,
       crNumber: crNumber.trim() || undefined,
@@ -154,7 +156,7 @@ export default function NewCustomerPage() {
         <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
           <h3 className="text-sm font-bold text-[#202D3B] border-b border-slate-100 pb-3">البيانات الضريبية والتجارية</h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
             <div>
               <label className="block font-semibold text-slate-600 mb-1">الرقم الضريبي (15 رقم)</label>
               <input
@@ -162,13 +164,13 @@ export default function NewCustomerPage() {
                 maxLength={15}
                 value={taxNumber}
                 onChange={(e) => setTaxNumber(e.target.value)}
-                placeholder="3XXXXXXXXXXXX03"
+                placeholder="300XXXXXXXXXXX3"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[#202D3B] font-mono outline-none focus:border-[#C59A55]"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-600 mb-1">السجل التجاري</label>
+              <label className="block font-semibold text-slate-600 mb-1">السجل التجاري (10 أرقام)</label>
               <input
                 type="text"
                 maxLength={10}
@@ -190,13 +192,24 @@ export default function NewCustomerPage() {
               />
             </div>
 
-            <div>
-              <label className="block font-semibold text-slate-600 mb-1">العنوان الوطني</label>
+            <div className="sm:col-span-2 lg:col-span-2">
+              <label className="block font-semibold text-slate-600 mb-1">العنوان</label>
               <input
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="الحي، الشارع..."
+                placeholder="مثال: الرياض - طريق الملك فهد - حي العليا"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[#202D3B] outline-none focus:border-[#C59A55]"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-600 mb-1">العنوان الوطني</label>
+              <input
+                type="text"
+                value={nationalAddress}
+                onChange={(e) => setNationalAddress(e.target.value)}
+                placeholder="مثال: 1234 الرياض 5678"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[#202D3B] outline-none focus:border-[#C59A55]"
               />
             </div>

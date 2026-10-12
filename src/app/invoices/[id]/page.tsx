@@ -181,9 +181,17 @@ function InvoiceDetail({ params }: { params: Promise<{ id: string }> }) {
             <div className="font-bold text-sm text-[#202D3B]">
               {customer?.name || invoice.snapshotCustomer?.name || 'العميل'}
             </div>
-            <div className="text-slate-600 mt-0.5">
-              {customer?.address || invoice.snapshotCustomer?.address}
-            </div>
+            {(customer?.address || invoice.snapshotCustomer?.address) && (
+              <div className="text-slate-600 mt-0.5">
+                {customer?.address || invoice.snapshotCustomer?.address}
+              </div>
+            )}
+            {(customer?.nationalAddress || invoice.snapshotCustomer?.nationalAddress) && (
+              <div className="text-slate-500 mt-0.5 text-[11px]">
+                <span className="text-slate-400">العنوان الوطني: </span>
+                <span>{customer?.nationalAddress || invoice.snapshotCustomer?.nationalAddress}</span>
+              </div>
+            )}
             <div className="text-slate-500 mt-0.5 font-mono">
               {customer?.phone || invoice.snapshotCustomer?.phone}
             </div>
