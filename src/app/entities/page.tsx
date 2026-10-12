@@ -82,9 +82,21 @@ export default function EntitiesList() {
     try {
       const ext = file.name.split('.').pop();
       const path = `logos/${entity.id}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('entity-assets').upload(path, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: { publicUrl } } = supabase.storage.from('entity-assets').getPublicUrl(path);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', path);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'فشل في رفع الشعار');
+      }
+
+      const { publicUrl } = await res.json();
       await supabase.from('entities').update({ logo_url: publicUrl }).eq('id', entity.id);
       await fetchEntities();
     } catch (e: any) { alert('خطأ في رفع اللوجو: ' + e.message); }
