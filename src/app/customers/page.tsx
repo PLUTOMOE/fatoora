@@ -1,259 +1,236 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useTranslation } from '@/hooks/useTranslation';
+import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { 
-  Download, Plus, Search, Users, MoreHorizontal, 
-  Loader2, Sparkles, ChevronRight, FileText, ArrowLeft
+  Plus, Search, UserCheck, UserX, 
+  FileSpreadsheet, Edit3, Trash2, Phone, 
+  Building2, User, CheckCircle2, AlertCircle 
 } from 'lucide-react';
-import { useStore } from '@/store/useStore';
-import { getCustomers } from '@/lib/supabase/services';
+import { useZajelStore } from '@/store/zajelStore';
+import { Customer } from '@/types/zajel';
 
-function CustomersListContent() {
-  const { t } = useTranslation();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { activeEntity } = useStore();
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [invoiceCounts, setInvoiceCounts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+export default function CustomersListPage() {
+  const { customers, getCustomerBalance, toggleCustomerStatus, deleteCustomer } = useZajelStore();
 
-  const fetchCustomers = async () => {
-    setLoading(true);
-    try {
-      const { createClient } = await import('@/lib/supabase/client');
-      const supabase = createClient();
-      
-      let ent: { id: string } | null = null;
-      if (activeEntity?.name) {
-        const { data } = await supabase.from('entities').select('id').eq('name', activeEntity.name).single();
-        ent = data;
-      }
-      if (!ent) {
-        const { data } = await supabase.from('entities').select('id').limit(1).single();
-        ent = data;
-      }
-      
-      if (ent) {
-        const [custData, invData] = await Promise.all([
-          getCustomers(ent.id),
-          supabase.from('invoices').select('id, customer_id').eq('entity_id', ent.id)
-        ]);
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'business' | 'individual'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-        setCustomers(custData || []);
-
-        const counts: Record<string, number> = {};
-        invData?.data?.forEach((inv: any) => {
-          if (inv.customer_id) {
-            counts[inv.customer_id] = (counts[inv.customer_id] || 0) + 1;
-          }
-        });
-        setInvoiceCounts(counts);
-      }
-    } catch (e) { console.error(e); }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchCustomers();
-  }, [activeEntity, searchParams]);
-
-  // Filtered list
   const filteredCustomers = useMemo(() => {
-    return customers.filter(c => {
-      const matchesSearch = !searchQuery || 
-        c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.phone?.includes(searchQuery) ||
-        c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.tax_number?.includes(searchQuery);
+    return customers.filter((c) => {
+      const matchesSearch = 
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.code.toLowerCase().includes(search.toLowerCase()) ||
+        c.phone.includes(search) ||
+        (c.taxNumber && c.taxNumber.includes(search));
 
       const matchesType = typeFilter === 'all' || c.type === typeFilter;
+      const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
 
-      return matchesSearch && matchesType;
+      return matchesSearch && matchesType && matchesStatus;
     });
-  }, [customers, searchQuery, typeFilter]);
+  }, [customers, search, typeFilter, statusFilter]);
 
-  const handleExportCSV = () => {
-    if (customers.length === 0) return;
-    const headers = ['الاسم', 'النوع', 'البريد', 'الجوال', 'المدينة', 'الرقم الضريبي', 'عدد الفواتير'];
-    const rows = customers.map(c => [
-      c.name,
-      c.type === 'company' ? 'شركة / مؤسسة' : 'فرد',
-      c.email || '',
-      c.phone || '',
-      c.city || '',
-      c.tax_number || '',
-      invoiceCounts[c.id] || 0
-    ]);
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers, ...rows].map(e => e.join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `customers-${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDelete = (id: string) => {
+    const res = deleteCustomer(id);
+    if (!res.success) {
+      setDeleteError(res.message || 'لا يمكن حذف العميل');
+      setTimeout(() => setDeleteError(null), 5000);
+    }
   };
 
-  if (loading) {
-    return <div className="flex h-60 items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/80" /></div>;
-  }
-
   return (
-    <div className="space-y-5" dir="rtl">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => router.back()} 
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted text-muted-foreground transition-colors"
-          >
-            <ChevronRight className="w-5 h-5 rtl:rotate-0" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">{t('pages.customers.title')}</h1>
-            <p className="text-[13px] text-muted-foreground mt-1">
-              {customers.length === 0 ? 'لا يوجد عملاء بعد' : `${customers.length} عميل في قاعدة البيانات`}
-            </p>
-          </div>
+    <div className="space-y-6" dir="rtl">
+      
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div>
+          <h2 className="text-xl font-bold text-[#202D3B]">العملاء</h2>
+          <p className="text-xs text-slate-500 mt-0.5">إدارة بيانات العملاء والشركات ومتابعة الأرصدة وكشوف الحساب</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button 
-            onClick={handleExportCSV}
-            className="flex items-center gap-1.5 h-8 px-3 bg-card border border-border rounded-md text-[12px] text-foreground hover:border-foreground/20"
+
+        <Link
+          href="/customers/new"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white text-xs font-bold shadow-sm shadow-[#C59A55]/20 transition-all self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          <span>عميل جديد</span>
+        </Link>
+      </div>
+
+      {deleteError && (
+        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+          <span>{deleteError}</span>
+        </div>
+      )}
+
+      {/* Filter Toolbar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute right-3.5 top-3 text-slate-400" />
+          <input
+            type="text"
+            placeholder="البحث بالاسم أو الكود أو الجوال أو الرقم الضريبي..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-10 pl-3.5 py-2 text-[#202D3B] placeholder-slate-400 focus:outline-none focus:border-[#C59A55]"
+          />
+        </div>
+
+        <div>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as any)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-[#202D3B] focus:outline-none focus:border-[#C59A55]"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>تصدير CSV</span>
-          </button>
-          <button onClick={() => router.push('/customers/new')} className="flex items-center gap-1.5 h-8 px-3 bg-primary text-primary-foreground rounded-md text-[12px] font-medium hover:opacity-90">
-            <Plus className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t('pages.customers.add')}</span>
-          </button>
-          
-          <button 
-            onClick={() => router.push('/customers/new?mode=ai')} 
-            className="flex items-center gap-1.5 h-8 px-3 bg-gradient-to-r from-[#FFE2A8] to-[#E8B96B] hover:opacity-90 text-[#7A5A1A] rounded-md text-[12px] font-bold shadow-sm transition-opacity"
+            <option value="all">جميع الأنواع</option>
+            <option value="business">منشأة / شركة</option>
+            <option value="individual">فرد</option>
+          </select>
+        </div>
+
+        <div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-[#202D3B] focus:outline-none focus:border-[#C59A55]"
           >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">إضافة بملف (AI)</span>
-          </button>
+            <option value="all">جميع الحالات</option>
+            <option value="active">نشط</option>
+            <option value="inactive">معطل</option>
+          </select>
         </div>
       </div>
 
-      {/* Table Card */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-        {/* Search & Filters */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border bg-muted/20">
-          <div className="relative flex-1 min-w-[220px] max-w-[360px]">
-            <Search className="w-3.5 h-3.5 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/80" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="ابحث بالاسم، الجوال، أو الرقم الضريبي..."
-              className="w-full pr-9 pl-3 h-9 bg-background border border-border rounded-xl text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <select
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
-              className="h-9 px-3 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="all">كل الأنواع</option>
-              <option value="company">شركات / مؤسسات</option>
-              <option value="individual">أفراد</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Table */}
+      {/* Customers Table */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          {filteredCustomers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-60 text-muted-foreground">
-              <Users className="w-8 h-8 text-muted-foreground/40 mb-3" />
-              <p className="text-[13px]">
-                {customers.length === 0 ? 'لا يوجد عملاء مضافين في الكيان الحالي' : 'لا توجد نتائج مطابقة لبحثك'}
-              </p>
-              {customers.length === 0 && (
-                <button onClick={() => router.push('/customers/new')} className="mt-4 text-[12px] text-primary font-medium hover:underline">
-                  أضف عميلك الأول الآن
-                </button>
-              )}
-            </div>
-          ) : (
-            <table className="w-full min-w-[650px] text-right">
-              <thead>
-                <tr className="border-b border-border text-[11px] text-muted-foreground/80 uppercase tracking-wider bg-muted/30">
-                  <th className="font-semibold px-4 py-3">{t('pages.customers.name')}</th>
-                  <th className="font-semibold px-4 py-3">معلومات التواصل</th>
-                  <th className="font-semibold px-4 py-3 text-center">عدد الفواتير</th>
-                  <th className="font-semibold px-4 py-3">{t('pages.customers.city')}</th>
-                  <th className="font-semibold px-4 py-3 text-center">الإجراءات</th>
+          <table className="w-full text-right text-xs">
+            <thead className="bg-slate-50/70 text-slate-500 border-b border-slate-200 font-semibold">
+              <tr>
+                <th className="py-3 px-4">كود العميل</th>
+                <th className="py-3 px-4">اسم العميل / المنشأة</th>
+                <th className="py-3 px-4">رقم الجوال</th>
+                <th className="py-3 px-4">الرقم الضريبي</th>
+                <th className="py-3 px-4">الحالة</th>
+                <th className="py-3 px-4">رصيد العميل</th>
+                <th className="py-3 px-4 text-center">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredCustomers.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                    لا يوجد عملاء مطابقون للبحث
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="text-[13px] divide-y divide-border/50">
-                {filteredCustomers.map((row) => (
-                  <tr 
-                    key={row.id} 
-                    onClick={() => router.push(`/customers/${row.id}/statement`)}
-                    className="hover:bg-muted/40 transition-colors group cursor-pointer"
-                  >
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 font-bold text-xs">
-                          {row.name?.substring(0, 2)}
+              ) : (
+                filteredCustomers.map((c) => {
+                  const balance = getCustomerBalance(c.id);
+                  const isDue = balance > 0;
+                  const isCredit = balance < 0;
+
+                  return (
+                    <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-[#202D3B]">
+                        {c.code}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <Link 
+                          href={`/customers/${c.id}`} 
+                          className="font-bold text-[#202D3B] hover:text-[#C59A55] transition-colors flex items-center gap-1.5"
+                        >
+                          {c.type === 'business' ? (
+                            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          ) : (
+                            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          )}
+                          <span>{c.name}</span>
+                        </Link>
+                        {c.city && <span className="text-[11px] text-slate-400 block mr-5">{c.city}</span>}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-600">
+                        {c.phone}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-slate-500">
+                        {c.taxNumber || '-'}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          c.status === 'active' 
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                            : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {c.status === 'active' ? 'نشط' : 'معطل'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-sm">
+                        {isDue ? (
+                          <span className="text-rose-600">
+                            {balance.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
+                            <span className="text-[10px] font-normal text-rose-500 block">مستحق على العميل</span>
+                          </span>
+                        ) : isCredit ? (
+                          <span className="text-emerald-600">
+                            {Math.abs(balance).toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
+                            <span className="text-[10px] font-normal text-emerald-500 block">رصيد لصالح العميل</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">0.00 ر.س</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          {/* Direct Statement Button */}
+                          <Link
+                            href={`/customers/${c.id}/statement`}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#C59A55]/10 hover:bg-[#C59A55] text-[#C59A55] hover:text-white font-bold text-[11px] transition-colors"
+                            title="عرض كشف حساب العميل"
+                          >
+                            <FileSpreadsheet className="w-3.5 h-3.5" />
+                            <span>كشف حساب</span>
+                          </Link>
+
+                          {/* Profile Link */}
+                          <Link
+                            href={`/customers/${c.id}`}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                            title="الملف والتفاصيل"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </Link>
+
+                          {/* Toggle Active/Inactive */}
+                          <button
+                            onClick={() => toggleCustomerStatus(c.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                            title={c.status === 'active' ? 'تعطيل الحساب' : 'تفعيل الحساب'}
+                          >
+                            {c.status === 'active' ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5 text-emerald-600" />}
+                          </button>
+
+                          {/* Delete (Safe check) */}
+                          <button
+                            onClick={() => handleDelete(c.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="حذف العميل"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                        <div>
-                          <div className="font-semibold text-foreground group-hover:text-primary transition-colors">{row.name}</div>
-                          <div className="text-[11px] text-muted-foreground">
-                            {row.type === 'company' ? 'شركة / مؤسسة' : 'فرد'}
-                            {row.tax_number ? ` · ضريبي: ${row.tax_number}` : ''}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="text-[12px] text-foreground font-mono">{row.phone || '-'}</div>
-                      <div className="text-[11px] text-muted-foreground">{row.email || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-muted text-foreground tabular-nums">
-                        {invoiceCounts[row.id] || 0}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 font-medium text-foreground text-xs">
-                      {row.city || row.address || '-'}
-                    </td>
-                    <td className="px-4 py-3.5 text-center" onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => router.push(`/customers/${row.id}/statement`)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-xl text-xs font-semibold transition-all shadow-sm"
-                        title="عرض وطباعة كشف الحساب"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>كشف حساب</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
-  );
-}
 
-export default function CustomersList() {
-  return (
-    <Suspense fallback={<div className="flex h-60 items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/80" /></div>}>
-      <CustomersListContent />
-    </Suspense>
+    </div>
   );
 }

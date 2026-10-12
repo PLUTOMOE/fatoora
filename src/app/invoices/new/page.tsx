@@ -1,732 +1,564 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronRight, Save, LayoutTemplate, Eye, X, ArrowRight, Printer, Plus, Trash2, GripVertical, Stamp, PenTool, Upload, ImageIcon, Loader2 } from 'lucide-react';
-import { CustomerAutocomplete, CustomerData } from '@/components/ui/CustomerAutocomplete';
-import { ProductAutocomplete, ProductData } from '@/components/ui/ProductAutocomplete';
-import { NotesManager } from '@/components/ui/NotesManager';
-import { ClassicTemplate } from '@/components/invoice-templates/ClassicTemplate';
-import { ModernTemplate } from '@/components/invoice-templates/ModernTemplate';
-import { MinimalTemplate } from '@/components/invoice-templates/MinimalTemplate';
-import { EliteTemplate } from '@/components/invoice-templates/EliteTemplate';
-import { CorporateTemplate } from '@/components/invoice-templates/CorporateTemplate';
-import { CompactTemplate } from '@/components/invoice-templates/CompactTemplate';
-import { RoyalTemplate } from '@/components/invoice-templates/RoyalTemplate';
-import { ExecutiveTemplate } from '@/components/invoice-templates/ExecutiveTemplate';
-import { useStore } from '@/store/useStore';
-import { createClient } from '@/lib/supabase/client';
-import { getInvoiceDetails, getNextDocumentNumber } from '@/lib/supabase/services';
-import QRCode from 'qrcode';
-import { getZatcaQRCode } from '@/lib/zatca';
+import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { 
+  ArrowRight, Plus, Trash2, Save, Printer, 
+  CheckCircle2, FileText, UserPlus 
+} from 'lucide-react';
+import { useZajelStore } from '@/store/zajelStore';
+import { DocumentItem } from '@/types/zajel';
+import { ZajelLogo } from '@/components/shared/ZajelLogo';
+import { formatDate } from '@/lib/zajelUtils';
 
-interface InvoiceItem {
-  name: string;
-  description: string;
-  qty: number;
-  price: number;
-  tax_rate: number;
-}
-
-function InvoiceFormContent() {
+export default function NewInvoicePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { activeEntity } = useStore();
-  const [showPreview, setShowPreview] = useState(false);
-  const [entityData, setEntityData] = useState<any>(null);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
-  const [settings, setSettings] = useState<any>({
-    template: 'elite',
-    logo_url: '',
-    stamp_url: '',
-    signature_url: '',
-    default_notes: ''
-  });
+  const { customers, products, invoices, settings, addInvoice, addCustomer } = useZajelStore();
 
-  // Invoice Data States
-  const [customerInfo, setCustomerInfo] = useState({ id: '', name: '', tax_number: '', address: '' });
-  const [invoiceDates, setInvoiceDates] = useState({ date: new Date().toISOString().split('T')[0], due_date: '' });
-  const [docNumber, setDocNumber] = useState(`INV-${new Date().getFullYear()}-001`);
-  const [discount, setDiscount] = useState<number>(0);
-  const [discountType, setDiscountType] = useState<'amount' | 'percent'>('amount');
-  const [isSaving, setIsSaving] = useState(false);
-  const [showStamp, setShowStamp] = useState(false);
-  const [showSignature, setShowSignature] = useState(false);
+  const [customerId, setCustomerId] = useState(customers[0]?.id || '');
+  const [date, setDate] = useState('2026-10-12'); // Defaults to mockup date or today
+  const [dueDate, setDueDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [items, setItems] = useState<InvoiceItem[]>([
-    { name: '', description: '', qty: 1, price: 0, tax_rate: 15 }
+  const [terms, setTerms] = useState(settings.invoiceTerms || '');
+
+  // Quick Customer modal
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+
+  // Default items matching mockup 3
+  const [items, setItems] = useState<DocumentItem[]>([
+    {
+      id: 'ii-1',
+      description: 'خدمة استشارية',
+      unit: 'جلسة',
+      quantity: 2,
+      unitPrice: 1000,
+      discount: 0,
+      taxRate: 15,
+      taxAmount: 300,
+      total: 2000, // Matching mockup items table
+    },
+    {
+      id: 'ii-2',
+      description: 'دعم فني',
+      unit: 'شهر',
+      quantity: 1,
+      unitPrice: 500,
+      discount: 0,
+      taxRate: 15,
+      taxAmount: 75,
+      total: 500,
+    }
   ]);
 
-  // Fetch real entity data from DB & auto-generate sequential document number
-  useEffect(() => {
-    const fetchEntity = async () => {
-      if (!activeEntity?.name) return;
-      try {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from('entities')
-          .select('*')
-          .eq('name', activeEntity.name)
-          .single();
-        if (data) {
-          setEntityData(data);
-          // توليد الرقم التسلسلي التالي تلقائياً لمنع التكرار
-          const nextNum = await getNextDocumentNumber(data.id, 'invoice');
-          if (nextNum) setDocNumber(nextNum);
-        }
-      } catch (e) { console.error('Failed to load entity or generate sequence', e); }
-    };
-    fetchEntity();
-  }, [activeEntity?.name]);
+  const [discountTotal, setDiscountTotal] = useState(0);
 
-  useEffect(() => {
-    // Load general settings
-    const stored = localStorage.getItem('invoice_settings');
-    if (stored) {
-      try { setSettings(JSON.parse(stored)); } catch {}
-    }
+  // Auto invoice number
+  const nextInvoiceNum = useMemo(() => {
+    return `${settings.prefixInvoice}${String(invoices.length + 1).padStart(3, '0')}`;
+  }, [settings.prefixInvoice, invoices.length]);
 
-    // Load Draft if returning from Customer Creation
-    const draft = localStorage.getItem('invoice_draft_state');
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft);
-        if (parsed.items) setItems(parsed.items);
-        if (parsed.invoiceDates) setInvoiceDates(parsed.invoiceDates);
-        localStorage.removeItem('invoice_draft_state'); // Clear draft
-      } catch (e) {
-        console.error("Error loading draft", e);
-      }
-    }
+  const selectedCustomer = useMemo(() => {
+    return customers.find(c => c.id === customerId) || customers[0] || null;
+  }, [customers, customerId]);
 
-    // Load New Customer if redirected back
-    const newCustomerStr = searchParams.get('newCustomerData');
-    if (newCustomerStr) {
-      try {
-        const cData = JSON.parse(newCustomerStr);
-        setCustomerInfo({
-          id: cData.id || '',
-          name: cData.name || '',
-          tax_number: cData.tax_number || '',
-          address: cData.address || ''
-        });
-      } catch (e) {
-        console.error("Error parsing newCustomerData", e);
-      }
-    }
+  const handleItemChange = (index: number, field: keyof DocumentItem, value: any) => {
+    const updated = [...items];
+    const item = { ...updated[index], [field]: value };
 
-    // Load from Quotation if converting
-    const sourceQuotationId = searchParams.get('source_quotation_id');
-    if (sourceQuotationId) {
-      const loadQuotation = async () => {
-        try {
-          const { invoice, items: qItems } = await getInvoiceDetails(sourceQuotationId);
-          if (invoice && qItems) {
-            // Set Customer
-            if (invoice.customers) {
-               setCustomerInfo({
-                 id: invoice.customers.id,
-                 name: invoice.customers.name,
-                 tax_number: invoice.customers.tax_number || '',
-                 address: invoice.customers.address || ''
-               });
-            }
-            // Set Items
-            if (qItems.length > 0) {
-              const mappedItems = qItems.map((qi: any) => ({
-                name: qi.description.split('\n')[0] || qi.description,
-                description: qi.description,
-                qty: qi.quantity,
-                price: qi.unit_price,
-                tax_rate: qi.tax_rate
-              }));
-              setItems(mappedItems);
-            }
-            // Set Notes
-            if (invoice.notes) {
-              setNotes(invoice.notes);
-            }
-          }
-        } catch (err) {
-          console.error("Failed to load quotation for conversion", err);
-        }
-      };
-      loadQuotation();
-    }
-  }, [searchParams]);
+    const qty = Number(item.quantity) || 0;
+    const price = Number(item.unitPrice) || 0;
+    const disc = Number(item.discount) || 0;
+    const rate = Number(item.taxRate) || 0;
 
-  const handleAddItem = () => {
-    setItems([...items, { name: '', description: '', qty: 1, price: 0, tax_rate: 15 }]);
+    const baseAmount = Math.max(0, (qty * price) - disc);
+    const tax = baseAmount * (rate / 100);
+
+    item.taxAmount = tax;
+    item.total = baseAmount; // Base total displayed in row
+    updated[index] = item;
+    setItems(updated);
   };
 
-  const handleRemoveItem = (index: number) => {
+  const handleProductSelect = (index: number, productId: string) => {
+    const prod = products.find(p => p.id === productId);
+    if (!prod) return;
+
+    handleItemChange(index, 'description', prod.name);
+    handleItemChange(index, 'unit', prod.unit);
+    handleItemChange(index, 'unitPrice', prod.price);
+    handleItemChange(index, 'taxRate', prod.taxRate);
+  };
+
+  const addItem = () => {
+    const defaultProd = products[0];
+    setItems([
+      ...items,
+      {
+        id: 'ii-' + Date.now(),
+        description: defaultProd?.name || 'خدمة جديدة',
+        unit: defaultProd?.unit || 'خدمة',
+        quantity: 1,
+        unitPrice: defaultProd?.price || 500,
+        discount: 0,
+        taxRate: 15,
+        taxAmount: (defaultProd?.price || 500) * 0.15,
+        total: defaultProd?.price || 500,
+      }
+    ]);
+  };
+
+  const removeItem = (index: number) => {
+    if (items.length <= 1) return;
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const handleItemChange = (index: number, field: keyof InvoiceItem, value: any) => {
-    const newItems = [...items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setItems(newItems);
-  };
+  // Calculations
+  const subtotal = items.reduce((acc, it) => acc + (it.quantity * it.unitPrice), 0);
+  const netBeforeTax = Math.max(0, subtotal - discountTotal);
+  const vatAmount = netBeforeTax * (settings.vatRate / 100);
+  const total = netBeforeTax + vatAmount;
 
-  // Precise Accounting Calculations with Discount and Rounding
-  const subtotal = Math.round(items.reduce((acc, item) => acc + (item.qty * item.price), 0) * 100) / 100;
-  const discountVal = discountType === 'percent'
-    ? Math.round((subtotal * (discount / 100)) * 100) / 100
-    : Math.min(subtotal, Math.round(Number(discount || 0) * 100) / 100);
-  const taxableSubtotal = Math.max(0, subtotal - discountVal);
-  const taxRatio = subtotal > 0 ? taxableSubtotal / subtotal : 1;
-  const tax = Math.round(items.reduce((acc, item) => acc + (item.qty * item.price * (item.tax_rate / 100) * taxRatio), 0) * 100) / 100;
-  const total = Math.round((taxableSubtotal + tax) * 100) / 100;
-
-  // Generate QR Code on preview
-  useEffect(() => {
-    if (showPreview) {
-      const seller = entityData?.name || activeEntity?.name || 'الشركة';
-      const vatNum = entityData?.tax_number || activeEntity?.tax_number || '300000000000003';
-      const time = `${invoiceDates.date}T12:00:00Z`;
-      try {
-        const base64TLV = getZatcaQRCode(seller, vatNum, time, total.toFixed(2), tax.toFixed(2));
-        QRCode.toDataURL(base64TLV, { errorCorrectionLevel: 'medium', margin: 1, width: 140 })
-          .then(url => setQrCodeDataUrl(url))
-          .catch(err => console.error('Preview QR error', err));
-      } catch (e) {
-        console.error('Preview QR error', e);
-      }
-    }
-  }, [showPreview, entityData, activeEntity, invoiceDates.date, total, tax]);
-
-  const invoiceDataPayload = {
-    entity: {
-      name: entityData?.name || activeEntity?.name || '',
-      address: entityData?.address || '',
-      phone: entityData?.phone || '',
-      tax_number: entityData?.tax_number || '',
-      cr_number: entityData?.cr_number || '',
-      logo_url: entityData?.logo_url || settings.logo_url
-    },
-    customer: {
-      name: customerInfo.name || 'عميل غير محدد',
-      address: customerInfo.address,
-      phone: '',
-      tax_number: customerInfo.tax_number
-    },
-    items: items.length > 0 && items[0].name ? items : [{ name: 'بند فارغ', qty: 0, price: 0, tax_rate: 0 }],
-    invoice: {
-      number: docNumber,
-      date: invoiceDates.date,
-      due_date: invoiceDates.due_date,
-      subtotal,
-      tax,
-      discount: discountVal,
-      total
-    },
-    settings: {
-      stamp_url: showStamp ? settings.stamp_url : '',
-      signature_url: showSignature ? settings.signature_url : '',
-      notes: notes || settings.default_notes,
-      template: settings.template
-    },
-    type: 'invoice' as const,
-    qrCodeDataUrl: qrCodeDataUrl || undefined
-  };
-
-  const renderTemplate = () => {
-    switch (settings.template) {
-      case 'classic': return <ClassicTemplate {...invoiceDataPayload} />;
-      case 'modern': return <ModernTemplate {...invoiceDataPayload} />;
-      case 'minimal': return <MinimalTemplate {...invoiceDataPayload} />;
-      case 'elite': return <EliteTemplate {...invoiceDataPayload} />;
-      case 'corporate': return <CorporateTemplate {...invoiceDataPayload} />;
-      case 'compact': return <CompactTemplate {...invoiceDataPayload} />;
-      case 'royal': return <RoyalTemplate {...invoiceDataPayload} />;
-      case 'executive': return <ExecutiveTemplate {...invoiceDataPayload} />;
-      default: return <EliteTemplate {...invoiceDataPayload} />;
-    }
-  };
-
-  const handleSave = async (isDraft = false) => {
-    if (!entityData?.id) {
-      alert('البيانات غير مكتملة');
+  const handleSave = (status: 'draft' | 'approved', shouldPrint = false) => {
+    if (!customerId) {
+      alert('يرجى اختيار العميل');
       return;
     }
-    
-    setIsSaving(true);
-    try {
-      const supabase = createClient();
-      
-      let customerId = customerInfo.id;
-      
-      // If no customer ID but name exists, create the customer
-      if (!customerId && customerInfo.name) {
-        const { data: newCustomer, error: customerError } = await supabase
-          .from('customers')
-          .insert({
-            entity_id: entityData.id,
-            name: customerInfo.name,
-            tax_number: customerInfo.tax_number,
-            address: customerInfo.address,
-            type: 'company'
-          })
-          .select()
-          .single();
-          
-        if (!customerError && newCustomer) {
-          customerId = newCustomer.id;
-        }
-      }
 
-      if (!customerId) {
-        alert('يرجى تحديد أو إدخال بيانات العميل');
-        setIsSaving(false);
-        return;
-      }
-      
-      // Create Invoice
-      const { data: newInvoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .insert({
-          entity_id: entityData.id,
-          customer_id: customerId,
-          invoice_number: docNumber,
-          type: 'standard',
-          status: isDraft ? 'draft' : 'pending',
-          issue_date: invoiceDates.date,
-          due_date: invoiceDates.due_date || null,
-          subtotal: subtotal,
-          tax_total: tax,
-          discount: discountVal,
-          total: total,
-          notes: notes || settings.default_notes
-        })
-        .select()
-        .single();
-        
-      if (invoiceError) throw invoiceError;
-      
-      // Create Items
-      if (newInvoice && items.length > 0) {
-        const itemsToInsert = items.filter(item => item.name).map(item => ({
-          invoice_id: newInvoice.id,
-          description: item.name,
-          quantity: item.qty,
-          unit_price: item.price,
-          tax_rate: item.tax_rate,
-          total: Math.round(item.qty * item.price * (1 + item.tax_rate / 100) * 100) / 100
-        }));
-        
-        if (itemsToInsert.length > 0) {
-          await supabase.from('invoice_items').insert(itemsToInsert);
-        }
-      }
+    const newId = addInvoice({
+      number: nextInvoiceNum,
+      customerId,
+      date,
+      dueDate: dueDate || undefined,
+      items: items.map(it => ({
+        ...it,
+        total: (it.quantity * it.unitPrice) - it.discount + it.taxAmount,
+      })),
+      subtotal,
+      discount: discountTotal,
+      vatAmount,
+      total,
+      paidAmount: 0,
+      remainingAmount: total,
+      documentStatus: status,
+      paymentStatus: 'unpaid',
+      terms,
+      notes,
+      snapshotCustomer: selectedCustomer ? {
+        name: selectedCustomer.name,
+        taxNumber: selectedCustomer.taxNumber,
+        crNumber: selectedCustomer.crNumber,
+        phone: selectedCustomer.phone,
+        address: selectedCustomer.address,
+      } : undefined,
+      snapshotCompany: {
+        name: settings.name,
+        taxNumber: settings.taxNumber,
+        crNumber: settings.crNumber,
+        phone: settings.phone,
+        iban: settings.iban,
+        bankName: settings.bankName,
+      },
+    });
 
-      // إذا كانت الفاتورة محوّلة من عرض سعر، حدّث حالة عرض السعر إلى "مقبول / معتمد"
-      const sourceQuotationId = searchParams.get('source_quotation_id');
-      if (sourceQuotationId) {
-        await supabase
-          .from('invoices')
-          .update({ status: 'accepted' })
-          .eq('id', sourceQuotationId);
-      }
-      
-      // Redirect to the newly created invoice detail page
-      router.push(`/invoices/${newInvoice.id}`);
-      router.refresh();
-      
-    } catch (error) {
-      console.error("Error saving:", error);
-      alert('حدث خطأ أثناء الحفظ');
-    } finally {
-      setIsSaving(false);
+    if (shouldPrint) {
+      router.push(`/invoices/${newId}?print=true`);
+    } else {
+      router.push(`/invoices/${newId}`);
     }
   };
 
-  if (showPreview) {
-    return (
-      <div className="space-y-6 print:space-y-0">
-        <div className="flex items-center justify-between no-print">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setShowPreview(false)}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-card border border-border hover:bg-muted transition-colors"
-            >
-              <ArrowRight className="w-5 h-5 text-foreground" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">الفاتورة</h1>
-              <p className="text-sm text-muted-foreground mt-1">تأكد من شكل الفاتورة قبل الإصدار</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => window.print()} className="flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-medium border border-border bg-card hover:bg-muted transition-colors">
-              <Printer className="w-4 h-4" />
-              طباعة
-            </button>
-            <button 
-              onClick={() => handleSave(false)}
-              disabled={isSaving}
-              className="flex items-center gap-2 h-10 px-6 rounded-xl text-sm font-semibold bg-primary text-primary-foreground shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50"
-            >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {isSaving ? 'جاري التأكيد...' : 'تأكيد وإصدار'}
-            </button>
-          </div>
-        </div>
+  const handleQuickAddCustomer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustName.trim()) return;
 
-        <div className="w-full max-w-4xl mx-auto mt-6 print:mt-0 print:max-w-none">
-          <div className="w-full overflow-hidden rounded-xl border border-border bg-card print:border-none print:rounded-none">
-            <div className="w-full overflow-x-auto custom-scrollbar p-0">
-              <div className="min-w-[750px] w-full border border-gray-200 print:border-none print:min-w-0">
-                 {renderTemplate()}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    const newId = addCustomer({
+      code: `CUST-${String(customers.length + 1).padStart(3, '0')}`,
+      name: newCustName.trim(),
+      phone: newCustPhone.trim() || '0500000000',
+      type: 'business',
+      status: 'active',
+      openingBalance: 0,
+      openingBalanceType: 'debit',
+      openingBalanceDate: date,
+    });
+
+    setCustomerId(newId);
+    setShowAddCustomer(false);
+    setNewCustName('');
+    setNewCustPhone('');
+  };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-20">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <button onClick={() => router.back()} className="hover:text-foreground transition-colors">الفواتير</button>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-foreground font-medium">إنشاء فاتورة جديدة</span>
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">إنشاء فاتورة جديدة</h1>
-        </div>
+    <div className="space-y-6 max-w-6xl mx-auto" dir="rtl">
+      
+      {/* Top Header */}
+      <div className="flex items-center justify-between bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <select
-              value={settings.template}
-              onChange={(e) => setSettings((s: any) => ({ ...s, template: e.target.value }))}
-              className="appearance-none flex items-center gap-2 h-10 px-4 pr-8 rounded-xl text-sm font-medium border border-border bg-card hover:bg-muted transition-colors cursor-pointer outline-none"
-            >
-              <option value="elite">⭐ Elite</option>
-              <option value="corporate">🏢 Corporate</option>
-              <option value="compact">📋 Compact</option>
-              <option value="royal">👑 Royal</option>
-              <option value="executive">💎 Executive</option>
-              <option value="modern">🎨 Modern</option>
-              <option value="classic">📄 Classic</option>
-              <option value="minimal">✏️ Minimal</option>
-            </select>
-            <LayoutTemplate className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Link
+            href="/invoices"
+            className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+          >
+            <ArrowRight className="w-5 h-5" />
+          </Link>
+          <div>
+            <h2 className="text-xl font-bold text-[#202D3B]">إنشاء فاتورة جديدة</h2>
+            <p className="text-xs text-slate-500 mt-0.5">إصدار فاتورة مبيعات جديدة للعميل مع اعتمادها وتحديث الأرصدة</p>
           </div>
-          <button 
-            onClick={() => setShowPreview(true)}
-            className="flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-medium border border-border bg-card hover:bg-muted transition-colors"
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleSave('draft', false)}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors"
           >
-            <Eye className="w-4 h-4 text-primary" />
-            معاينة
+            حفظ
           </button>
-          <button 
-            onClick={() => handleSave(false)}
-            disabled={isSaving}
-            className="flex items-center gap-2 h-10 px-6 rounded-xl text-sm font-semibold bg-primary text-primary-foreground shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50"
+          <button
+            type="button"
+            onClick={() => handleSave('approved', true)}
+            className="px-5 py-2.5 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white text-xs font-bold shadow-md shadow-[#C59A55]/20 transition-all flex items-center gap-2"
           >
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {isSaving ? 'جاري الإصدار...' : 'إصدار الفاتورة'}
+            <Printer className="w-4 h-4" />
+            <span>حفظ وطباعة</span>
           </button>
         </div>
       </div>
 
-      {/* Form Area */}
-      <div className="space-y-6">
+      {/* Split Screen Layout (Matching Mockup 3: Form on right, Live Preview on left) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Customer Information */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-          <h2 className="text-sm font-bold text-foreground mb-4">بيانات العميل والإصدار</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">رقم الفاتورة (تسلسلي)</label>
-              <input 
-                type="text" 
-                value={docNumber}
-                onChange={(e) => setDocNumber(e.target.value)}
-                placeholder="INV-2026-001" 
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-sm font-mono outline-none focus:border-primary" 
-              />
-            </div>
-            <div className="lg:col-span-2 space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">اسم العميل (مطلوب)</label>
-              <CustomerAutocomplete
-                value={customerInfo.name}
-                onChange={(customer, rawName) => {
-                  if (customer) {
-                    setCustomerInfo({
-                      id: customer.id,
-                      name: customer.name,
-                      tax_number: customer.tax_number || '',
-                      address: customer.address || ''
-                    });
-                  } else {
-                    setCustomerInfo(prev => ({ ...prev, name: rawName, id: '' }));
-                  }
-                }}
-                onOpenCreateNew={(nameQuery) => {
-                  const stateToSave = {
-                    items,
-                    invoiceDates,
-                  };
-                  localStorage.setItem('invoice_draft_state', JSON.stringify(stateToSave));
-                  router.push(`/customers/new?name=${encodeURIComponent(nameQuery)}&callback=/invoices/new`);
-                }}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">الرقم الضريبي للعميل</label>
-              <input 
-                type="text" 
-                value={customerInfo.tax_number}
-                onChange={(e) => setCustomerInfo({...customerInfo, tax_number: e.target.value})}
-                placeholder="الرقم الضريبي..." 
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-primary" 
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">تاريخ الاستحقاق</label>
-              <input 
-                type="date" 
-                value={invoiceDates.due_date}
-                onChange={(e) => setInvoiceDates({...invoiceDates, due_date: e.target.value})}
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-sm outline-none focus:border-primary text-foreground" 
-              />
-            </div>
-          </div>
-        </div>
-        
-        {/* Line Items Table (Odoo/Daftra Style) */}
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-border bg-muted/30">
-            <h2 className="text-sm font-bold text-foreground">بنود الفاتورة</h2>
-          </div>
+        {/* Right Column: Invoice Form (7 cols) */}
+        <div className="lg:col-span-7 space-y-6">
           
-          <div className="w-full overflow-x-auto">
-            <table className="w-full text-right min-w-[800px]">
-              <thead>
-                <tr className="bg-muted/10 border-b border-border text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  <th className="w-8 py-3 px-2"></th>
-                  <th className="py-3 px-4 w-[40%]">المنتج / الخدمة</th>
-                  <th className="py-3 px-4 w-24 text-center">الكمية</th>
-                  <th className="py-3 px-4 w-32 text-center">سعر الوحدة</th>
-                  <th className="py-3 px-4 w-24 text-center">الضريبة</th>
-                  <th className="py-3 px-4 w-32 text-left">المجموع (ر.س)</th>
-                  <th className="py-3 px-4 w-12 text-center"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, idx) => {
-                  const itemTotal = item.qty * item.price;
-                  const itemTotalWithTax = itemTotal + (itemTotal * (item.tax_rate / 100));
-                  
-                  return (
-                    <tr key={idx} className="border-b border-border/50 bg-background hover:bg-muted/20 transition-colors group">
-                      <td className="py-3 px-2 align-top text-center cursor-move text-muted-foreground/30 hover:text-muted-foreground">
-                        <GripVertical className="w-4 h-4 mx-auto mt-3" />
+          {/* Main Info Box */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              
+              {/* Invoice Number */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">رقم الفاتورة</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={nextInvoiceNum}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-[#202D3B] cursor-not-allowed text-center"
+                />
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">التاريخ *</label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-[#202D3B] focus:border-[#C59A55] outline-none"
+                />
+              </div>
+
+              {/* Customer */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-semibold text-slate-600">العميل *</label>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowAddCustomer(true)}
+                    className="text-[11px] text-[#C59A55] hover:underline"
+                  >
+                    + جديد
+                  </button>
+                </div>
+                <select
+                  value={customerId}
+                  onChange={(e) => setCustomerId(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-[#202D3B] focus:border-[#C59A55] outline-none font-medium"
+                >
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Items Table (Mockup 3) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-[#202D3B]">بنود الفاتورة</h3>
+              <button
+                type="button"
+                onClick={addItem}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C59A55]/10 text-[#C59A55] hover:bg-[#C59A55] hover:text-white text-xs font-semibold transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>إضافة صنف</span>
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-right text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="py-2.5 px-3 w-5/12">الصنف</th>
+                    <th className="py-2.5 px-3 w-2/12 text-center">الكمية</th>
+                    <th className="py-2.5 px-3 w-2/12 text-center">السعر (ر.س)</th>
+                    <th className="py-2.5 px-3 w-2/12 text-left">الإجمالي (ر.س)</th>
+                    <th className="py-2.5 px-2 w-8 text-center"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {items.map((item, idx) => (
+                    <tr key={item.id} className="hover:bg-slate-50/50">
+                      <td className="py-2.5 px-3">
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
+                          placeholder="وصف الصنف..."
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-[#202D3B] outline-none focus:border-[#C59A55]"
+                          required
+                        />
                       </td>
-                      <td className="py-3 px-4 align-top">
-                        <div className="space-y-2">
-                          <ProductAutocomplete
-                            value={item.name}
-                            onChange={(product, rawName) => {
-                              if (product) {
-                                const newItems = [...items];
-                                newItems[idx] = {
-                                  ...newItems[idx],
-                                  name: product.name,
-                                  price: product.price || newItems[idx].price,
-                                  tax_rate: product.tax_rate ?? 15,
-                                  description: product.description || newItems[idx].description,
-                                };
-                                setItems(newItems);
-                              } else {
-                                handleItemChange(idx, 'name', rawName);
-                              }
-                            }}
-                          />
-                          <input 
-                            type="text" 
-                            value={item.description}
-                            onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                            placeholder="الوصف الإضافي (اختياري)..." 
-                            className="w-full bg-transparent border border-transparent focus:border-border hover:border-border rounded-md px-3 py-1.5 text-[13px] outline-none text-muted-foreground focus:text-foreground focus:bg-background transition-all"
-                          />
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 align-top">
-                        <input 
-                          type="number" 
+                      <td className="py-2.5 px-3">
+                        <input
+                          type="number"
                           min="1"
-                          value={item.qty}
-                          onChange={(e) => handleItemChange(idx, 'qty', parseFloat(e.target.value) || 0)}
-                          className="w-full text-center bg-transparent border border-transparent focus:border-border hover:border-border rounded-md px-2 py-2 text-sm outline-none focus:bg-background transition-all"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-center font-mono outline-none"
                         />
                       </td>
-                      <td className="py-3 px-4 align-top">
-                        <input 
-                          type="number" 
+                      <td className="py-2.5 px-3">
+                        <input
+                          type="number"
                           min="0"
-                          value={item.price}
-                          onChange={(e) => handleItemChange(idx, 'price', parseFloat(e.target.value) || 0)}
-                          className="w-full text-center bg-transparent border border-transparent focus:border-border hover:border-border rounded-md px-2 py-2 text-sm outline-none focus:bg-background transition-all tabular-nums"
+                          value={item.unitPrice}
+                          onChange={(e) => handleItemChange(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-center font-mono outline-none"
                         />
                       </td>
-                      <td className="py-3 px-4 align-top">
-                        <select 
-                          value={item.tax_rate}
-                          onChange={(e) => handleItemChange(idx, 'tax_rate', parseFloat(e.target.value))}
-                          className="w-full text-center bg-transparent border border-transparent focus:border-border hover:border-border rounded-md px-2 py-2 text-[13px] outline-none focus:bg-background transition-all appearance-none cursor-pointer"
-                          style={{ WebkitAppearance: 'none' }}
-                        >
-                          <option value="15">15%</option>
-                          <option value="0">0%</option>
-                        </select>
+                      <td className="py-2.5 px-3 text-left font-bold font-mono text-[#202D3B]">
+                        {item.total.toLocaleString('en-US')}
                       </td>
-                      <td className="py-3 px-4 align-top pt-5 text-left font-semibold text-foreground tabular-nums">
-                        {itemTotalWithTax.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-3 px-4 align-top pt-4">
-                        <button 
-                          onClick={() => handleRemoveItem(idx)}
-                          className="w-8 h-8 mx-auto flex items-center justify-center text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 rounded-md transition-all opacity-0 group-hover:opacity-100"
+                      <td className="py-2.5 px-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeItem(idx)}
+                          disabled={items.length <= 1}
+                          className="text-slate-400 hover:text-rose-600 disabled:opacity-20 p-1"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Subtotal, Discount & Totals (Mockup 3 right side) */}
+            <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <div className="w-64 space-y-2 text-xs">
+                <div className="flex justify-between text-slate-600">
+                  <span>المجموع الفرعي:</span>
+                  <span className="font-mono font-bold text-[#202D3B]">{subtotal.toLocaleString('en-US')} ر.س</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>الخصم:</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      value={discountTotal}
+                      onChange={(e) => setDiscountTotal(parseFloat(e.target.value) || 0)}
+                      className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs text-center font-mono outline-none"
+                    />
+                    <span className="text-[11px] text-slate-400">ر.س</span>
+                  </div>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>الضريبة ({settings.vatRate}%):</span>
+                  <span className="font-mono font-bold text-[#202D3B]">{vatAmount.toLocaleString('en-US')} ر.س</span>
+                </div>
+                <div className="flex justify-between text-sm font-bold text-[#202D3B] pt-2 border-t border-slate-200">
+                  <span>الإجمالي:</span>
+                  <span className="font-mono text-[#C59A55] text-base">{total.toLocaleString('en-US')} ر.س</span>
+                </div>
+              </div>
+            </div>
+
           </div>
-          
-          <div className="p-3 bg-background border-t border-border">
-            <button 
-              onClick={handleAddItem}
-              className="flex items-center gap-1.5 text-[13px] font-semibold text-primary hover:text-primary/80 transition-colors px-2 py-1 rounded-md hover:bg-primary/5"
+
+          {/* Form Actions Footer */}
+          <div className="flex items-center justify-end gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+            <button
+              type="button"
+              onClick={() => handleSave('draft', false)}
+              className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold"
             >
-              <Plus className="w-4 h-4" />
-              إضافة سطر
+              حفظ كمسودة
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSave('approved', false)}
+              className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold"
+            >
+              اعتماد الفاتورة
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSave('approved', true)}
+              className="px-6 py-2.5 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white text-xs font-bold shadow-md shadow-[#C59A55]/20 flex items-center gap-2"
+            >
+              <Printer className="w-4 h-4" />
+              <span>حفظ وطباعة</span>
             </button>
           </div>
+
         </div>
 
-        {/* Totals Calculation */}
-        <div className="flex justify-end">
-          <div className="bg-card border border-border rounded-xl p-6 shadow-sm w-full md:w-[400px]">
-            <div className="space-y-4">
-               <div className="flex justify-between text-[14px]">
-                 <span className="text-muted-foreground">المجموع الفرعي (بدون ضريبة)</span>
-                 <span className="font-medium tabular-nums">{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })} ر.س</span>
-               </div>
-               
-               {/* خصم إضافي */}
-               <div className="flex items-center justify-between text-[14px] pt-1">
-                 <div className="flex items-center gap-2">
-                   <span className="text-muted-foreground">الخصم</span>
-                   <div className="inline-flex rounded-md border border-border p-0.5 bg-background text-[11px]">
-                     <button
-                       type="button"
-                       onClick={() => setDiscountType('amount')}
-                       className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${discountType === 'amount' ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
-                     >
-                       ر.س
-                     </button>
-                     <button
-                       type="button"
-                       onClick={() => setDiscountType('percent')}
-                       className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${discountType === 'percent' ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
-                     >
-                       %
-                     </button>
-                   </div>
-                 </div>
-                 <div className="w-28">
-                   <input
-                     type="number"
-                     min="0"
-                     max={discountType === 'percent' ? 100 : subtotal}
-                     value={discount || ''}
-                     onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
-                     placeholder="0.00"
-                     className="w-full text-left bg-background border border-border rounded-md px-2.5 py-1 text-sm outline-none focus:border-primary tabular-nums"
-                   />
-                 </div>
-               </div>
-
-               {discountVal > 0 && (
-                 <div className="flex justify-between text-[13px] text-red-500 font-medium">
-                   <span>مبلغ الخصم</span>
-                   <span className="tabular-nums">-{discountVal.toLocaleString(undefined, { minimumFractionDigits: 2 })} ر.س</span>
-                 </div>
-               )}
-
-               <div className="flex justify-between text-[14px]">
-                 <span className="text-muted-foreground">ضريبة القيمة المضافة (15%)</span>
-                 <span className="font-medium tabular-nums text-primary">{tax.toLocaleString(undefined, { minimumFractionDigits: 2 })} ر.س</span>
-               </div>
-               <div className="flex justify-between border-t border-border pt-4 mt-2">
-                 <span className="text-base font-bold text-foreground uppercase tracking-wide">الإجمالي المستحق</span>
-                 <span className="text-xl font-black text-foreground tabular-nums tracking-tighter">
-                   {total.toLocaleString(undefined, { minimumFractionDigits: 2 })} ر.س
-                 </span>
-               </div>
+        {/* Left Column: Live Invoice Preview (Mockup 3 - 5 cols) */}
+        <div className="lg:col-span-5">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-md sticky top-20 text-xs space-y-5">
+            
+            <div className="text-center pb-2 border-b border-slate-100">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">معاينة الفاتورة الحية</span>
             </div>
+
+            {/* Preview Header with Zajel Logo */}
+            <div className="flex items-start justify-between">
+              <div>
+                <ZajelLogo variant="light" size="sm" />
+                <h4 className="font-bold text-xs text-[#202D3B] mt-2">فاتورة مبيعات</h4>
+              </div>
+
+              <div className="text-left text-[11px] text-slate-500 font-mono space-y-0.5">
+                <div className="font-bold text-[#202D3B]">{nextInvoiceNum}</div>
+                <div>{date}</div>
+              </div>
+            </div>
+
+            {/* Customer in Preview */}
+            <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-100 text-[11px] flex justify-between items-center">
+              <div>
+                <span className="text-slate-400 block text-[10px]">العميل:</span>
+                <span className="font-bold text-[#202D3B]">{selectedCustomer?.name || 'شركة الأفق'}</span>
+              </div>
+              <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-semibold border border-emerald-200">
+                معتمدة
+              </span>
+            </div>
+
+            {/* Live Table */}
+            <div className="border border-slate-100 rounded-xl overflow-hidden">
+              <table className="w-full text-right text-[11px]">
+                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-100">
+                  <tr>
+                    <th className="py-2 px-2.5">البند</th>
+                    <th className="py-2 px-2 text-center">الكمية</th>
+                    <th className="py-2 px-2 text-center">السعر</th>
+                    <th className="py-2 px-2.5 text-left">الإجمالي</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {items.map((it, idx) => (
+                    <tr key={idx}>
+                      <td className="py-2 px-2.5 font-medium text-slate-800">{it.description}</td>
+                      <td className="py-2 px-2 text-center font-mono text-slate-500">{it.quantity}</td>
+                      <td className="py-2 px-2 text-center font-mono text-slate-500">{it.unitPrice}</td>
+                      <td className="py-2 px-2.5 text-left font-mono font-bold text-[#202D3B]">
+                        {it.total.toLocaleString('en-US')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Live Totals Box */}
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5 text-[11px]">
+              <div className="flex justify-between text-slate-500">
+                <span>المجموع الفرعي:</span>
+                <span className="font-mono">{subtotal.toLocaleString('en-US')} ر.س</span>
+              </div>
+              {discountTotal > 0 && (
+                <div className="flex justify-between text-rose-600">
+                  <span>الخصم:</span>
+                  <span className="font-mono">-{discountTotal.toLocaleString('en-US')} ر.س</span>
+                </div>
+              )}
+              <div className="flex justify-between text-slate-500">
+                <span>الضريبة (15%):</span>
+                <span className="font-mono">{vatAmount.toLocaleString('en-US')} ر.س</span>
+              </div>
+              <div className="flex justify-between font-bold text-xs text-[#202D3B] pt-1.5 border-t border-slate-200">
+                <span>الإجمالي:</span>
+                <span className="font-mono text-[#C59A55] text-sm">{total.toLocaleString('en-US')} ر.س</span>
+              </div>
+            </div>
+
+            <div className="text-center text-[10px] text-slate-400">
+              زاجل النخبة • فواتير مبيعات معتمدة
+            </div>
+
           </div>
-        </div>
-
-        {/* Notes Manager */}
-        <NotesManager
-          docType="invoice"
-          value={notes}
-          onChange={setNotes}
-        />
-
-        {/* Stamp & Signature Toggle Buttons */}
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => settings.signature_url ? setShowSignature(!showSignature) : alert('ارفع التوقيع أولاً من: الإعدادات → إعدادات الفوترة')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-              showSignature && settings.signature_url
-                ? 'border-primary bg-primary/5 text-primary shadow-sm' 
-                : settings.signature_url
-                  ? 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
-                  : 'border-dashed border-border bg-background text-muted-foreground/50 cursor-not-allowed'
-            }`}
-          >
-            <PenTool className="w-4 h-4" />
-            {showSignature && settings.signature_url ? '✓ التوقيع مفعّل' : settings.signature_url ? 'إضافة التوقيع' : 'لا يوجد توقيع'}
-          </button>
-          <button
-            type="button"
-            onClick={() => settings.stamp_url ? setShowStamp(!showStamp) : alert('ارفع الختم أولاً من: الإعدادات → إعدادات الفوترة')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-              showStamp && settings.stamp_url
-                ? 'border-primary bg-primary/5 text-primary shadow-sm' 
-                : settings.stamp_url
-                  ? 'border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground'
-                  : 'border-dashed border-border bg-background text-muted-foreground/50 cursor-not-allowed'
-            }`}
-          >
-            <Stamp className="w-4 h-4" />
-            {showStamp && settings.stamp_url ? '✓ الختم مفعّل' : settings.stamp_url ? 'إضافة الختم' : 'لا يوجد ختم'}
-          </button>
         </div>
 
       </div>
-    </div>
-  );
-}
 
-export default function NewInvoicePage() {
-  return (
-    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">جاري التحميل...</div>}>
-      <InvoiceFormContent />
-    </Suspense>
+      {/* Quick Add Customer Modal */}
+      {showAddCustomer && (
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-200">
+            <h3 className="text-base font-bold text-[#202D3B] mb-3">إضافة عميل جديد سريعاً</h3>
+            <form onSubmit={handleQuickAddCustomer} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">اسم العميل أو المنشأة *</label>
+                <input
+                  type="text"
+                  required
+                  value={newCustName}
+                  onChange={(e) => setNewCustName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-[#C59A55]"
+                  placeholder="مثال: شركة التطوير الحديثة"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">رقم الجوال *</label>
+                <input
+                  type="text"
+                  required
+                  value={newCustPhone}
+                  onChange={(e) => setNewCustPhone(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:border-[#C59A55]"
+                  placeholder="05XXXXXXXX"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCustomer(false)}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#C59A55] text-white font-bold hover:bg-[#B38944]"
+                >
+                  إضافة العميل
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+    </div>
   );
 }

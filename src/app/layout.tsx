@@ -5,8 +5,8 @@ import { ClientLayout } from '@/components/layout/ClientLayout';
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: 'فاتورة | منصة الفوترة الإلكترونية',
-  description: 'منصة احترافية لإدارة الفواتير وعروض الأسعار متوافقة مع هيئة الزكاة والضريبة',
+  title: 'زاجل النخبة | نظام عروض الأسعار والفواتير وسندات القبض والصرف',
+  description: 'نظام ويب عربي متكامل لإدارة عروض الأسعار، الفواتير، كشوف حساب العملاء، وسندات القبض والصرف',
 };
 
 export const viewport: Viewport = {

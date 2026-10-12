@@ -1,204 +1,348 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useTranslation } from '@/hooks/useTranslation';
-import { createClient } from '@/lib/supabase/client';
-import { Plus, ChevronLeft, Sparkles, Upload, ScrollText, Receipt, Users, FileText, Package } from 'lucide-react';
-import { StatusPill } from '@/components/ui/StatusPill';
+import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
+import { 
+  Receipt, CheckCircle2, Clock, ScrollText, 
+  Plus, ArrowDownLeft, ArrowUpRight, ArrowLeft, 
+  Printer, Eye, Calendar, Building2, User, ChevronLeft
+} from 'lucide-react';
+import { useZajelStore } from '@/store/zajelStore';
+import { formatCurrency, formatDate } from '@/lib/zajelUtils';
 
-export default function Dashboard() {
-  const router = useRouter();
-  const { t } = useTranslation();
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [stats, setStats] = useState({ invoices: 0, customers: 0, products: 0 });
+export default function DashboardPage() {
+  const { invoices, quotations, customers, getCustomerBalance } = useZajelStore();
+  const [period, setPeriod] = useState<'today' | 'month' | 'all'>('month');
 
-  useEffect(() => {
-    const loadData = async () => {
-      const supabase = createClient();
-      
-      // جلب أحدث 5 فواتير (استبعاد عروض الأسعار)
-      const { data: inv } = await supabase
-        .from('invoices')
-        .select('*, customers(name)')
-        .neq('type', 'quotation')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      if (inv) setInvoices(inv);
+  // Filter invoices and quotations by period
+  const filteredData = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
 
-      // جلب الإحصائيات (الفواتير الفعلية فقط)
-      const [{ count: invCount }, { count: custCount }, { count: prodCount }] = await Promise.all([
-        supabase.from('invoices').select('*', { count: 'exact', head: true }).neq('type', 'quotation'),
-        supabase.from('customers').select('*', { count: 'exact', head: true }),
-        supabase.from('products').select('*', { count: 'exact', head: true }),
-      ]);
-      setStats({ invoices: invCount || 0, customers: custCount || 0, products: prodCount || 0 });
+    let periodInvoices = invoices.filter(inv => inv.documentStatus === 'approved');
+    let periodQuotations = quotations;
+
+    if (period === 'today') {
+      periodInvoices = periodInvoices.filter(inv => inv.date === todayStr);
+      periodQuotations = periodQuotations.filter(q => q.date === todayStr);
+    } else if (period === 'month') {
+      periodInvoices = periodInvoices.filter(inv => inv.date >= firstDayOfMonth);
+      periodQuotations = periodQuotations.filter(q => q.date >= firstDayOfMonth);
+    }
+
+    const totalInvoicesAmount = periodInvoices.reduce((acc, inv) => acc + (inv.total || 0), 0);
+    const totalCollected = periodInvoices.reduce((acc, inv) => acc + (inv.paidAmount || 0), 0);
+    const totalDue = Math.max(0, totalInvoicesAmount - totalCollected);
+    const quotationsCount = periodQuotations.length;
+
+    return {
+      periodInvoices,
+      totalInvoicesAmount,
+      totalCollected,
+      totalDue,
+      quotationsCount,
     };
-    loadData();
-  }, []);
+  }, [invoices, quotations, period]);
+
+  // Customers with due balances
+  const customersWithDue = useMemo(() => {
+    return customers
+      .map(c => ({
+        ...c,
+        balance: getCustomerBalance(c.id),
+      }))
+      .filter(c => c.balance > 0)
+      .sort((a, b) => b.balance - a.balance);
+  }, [customers, getCustomerBalance]);
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-[28px] font-bold text-foreground tracking-tight">{t('dashboard.title')}</h1>
-        <p className="text-[14px] text-muted-foreground mt-1">{t('dashboard.subtitle')}</p>
-      </div>
-
-      {/* Main Action Buttons */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <button
-          onClick={() => router.push('/invoices/new')}
-          className="group relative overflow-hidden bg-gradient-to-br from-[#1a1a2e] to-[#2d2d5e] dark:from-[#1e1e30] dark:to-[#2a2a50] text-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
-        >
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Plus className="w-7 h-7" />
-            </div>
-            <div className="text-right">
-              <div className="text-xl font-bold mb-1">{t('dashboard.new_invoice')}</div>
-              <div className="text-sm text-white/60">إنشاء فاتورة ضريبية جديدة</div>
-            </div>
-          </div>
-        </button>
-
-        <button
-          onClick={() => router.push('/quotations/new')}
-          className="group relative overflow-hidden bg-gradient-to-br from-[#5B5BD6] to-[#7B7BF6] dark:from-[#4a4ac0] dark:to-[#6a6ae0] text-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1"
-        >
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <ScrollText className="w-7 h-7" />
-            </div>
-            <div className="text-right">
-              <div className="text-xl font-bold mb-1">{t('dashboard.new_quotation')}</div>
-              <div className="text-sm text-white/60">إنشاء عرض سعر احترافي</div>
-            </div>
-          </div>
-        </button>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-card border border-border rounded-xl p-4 text-center">
-          <div className="w-10 h-10 rounded-lg bg-[#5B5BD6]/10 dark:bg-[#7b8fff]/10 flex items-center justify-center mx-auto mb-2">
-            <Receipt className="w-5 h-5 text-[#5B5BD6] dark:text-[#7b8fff]" />
-          </div>
-          <div className="text-2xl font-bold text-foreground tabular-nums">{stats.invoices}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">فواتير</div>
+    <div className="space-y-6" dir="rtl">
+      
+      {/* Top Welcome & Period Filter Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div>
+          <h2 className="text-xl font-bold text-[#202D3B]">مرحباً بك في زاجل النخبة</h2>
+          <p className="text-xs text-slate-500 mt-0.5">نظرة سريعة وشاملة على مؤشراتك المالية ونشاطك التجاري</p>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4 text-center">
-          <div className="w-10 h-10 rounded-lg bg-[#22C55E]/10 flex items-center justify-center mx-auto mb-2">
-            <Users className="w-5 h-5 text-[#22C55E]" />
-          </div>
-          <div className="text-2xl font-bold text-foreground tabular-nums">{stats.customers}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">عملاء</div>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4 text-center">
-          <div className="w-10 h-10 rounded-lg bg-[#F59E0B]/10 flex items-center justify-center mx-auto mb-2">
-            <Package className="w-5 h-5 text-[#F59E0B]" />
-          </div>
-          <div className="text-2xl font-bold text-foreground tabular-nums">{stats.products}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">منتجات</div>
-        </div>
-      </div>
 
-      {/* Latest Invoices */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h3 className="text-[15px] font-semibold text-foreground">{t('dashboard.latest_invoices')}</h3>
-          <button onClick={() => router.push('/invoices')} className="text-[13px] text-[#5B5BD6] hover:underline flex items-center gap-1">
-            {t('dashboard.view_all')}<ChevronLeft className="w-3.5 h-3.5" />
+        {/* Period Selector Tabs */}
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 self-start sm:self-auto">
+          <button
+            onClick={() => setPeriod('today')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              period === 'today' ? 'bg-white text-[#202D3B] shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            اليوم
+          </button>
+          <button
+            onClick={() => setPeriod('month')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              period === 'month' ? 'bg-[#C59A55] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            هذا الشهر
+          </button>
+          <button
+            onClick={() => setPeriod('all')}
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              period === 'all' ? 'bg-white text-[#202D3B] shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            جميع الفترات
           </button>
         </div>
+      </div>
 
-        {invoices.length === 0 ? (
-          <div className="p-8 text-center">
-            <Receipt className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">لا توجد فواتير بعد</p>
-            <button onClick={() => router.push('/invoices')} className="mt-3 text-sm text-[#5B5BD6] hover:underline">
-              أنشئ فاتورتك الأولى →
-            </button>
+      {/* 4 Summary KPI Cards (Mockup 1) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Card 1: إجمالي الفواتير */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-xs font-semibold text-slate-500">إجمالي الفواتير</div>
+            <div className="text-2xl font-bold text-[#202D3B] mt-1.5 tracking-tight">
+              {filteredData.totalInvoicesAmount.toLocaleString('en-US')}
+              <span className="text-xs font-normal text-slate-400 mr-1.5">ر.س</span>
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">الفواتير المعتمدة للفترة</div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px]">
-              <thead>
-                <tr className="border-b border-border text-[11px] text-muted-foreground/80 uppercase tracking-wider">
-                  <th className="text-right font-medium px-5 py-2.5">{t('dashboard.invoice')}</th>
-                  <th className="text-right font-medium px-5 py-2.5">{t('dashboard.customer')}</th>
-                  <th className="text-right font-medium px-5 py-2.5">{t('dashboard.status')}</th>
-                  <th className="text-left font-medium px-5 py-2.5">{t('dashboard.amount')}</th>
+          <div className="w-12 h-12 rounded-2xl bg-[#C59A55]/10 text-[#C59A55] flex items-center justify-center shrink-0">
+            <Receipt className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Card 2: المبالغ المحصلة */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-xs font-semibold text-slate-500">المبالغ المحصلة</div>
+            <div className="text-2xl font-bold text-emerald-600 mt-1.5 tracking-tight">
+              {filteredData.totalCollected.toLocaleString('en-US')}
+              <span className="text-xs font-normal text-slate-400 mr-1.5">ر.س</span>
+            </div>
+            <div className="text-[11px] text-emerald-600/80 mt-1">تم تحصيله من الفواتير</div>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Card 3: المبالغ المستحقة */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-xs font-semibold text-slate-500">المبالغ المستحقة</div>
+            <div className="text-2xl font-bold text-amber-600 mt-1.5 tracking-tight">
+              {filteredData.totalDue.toLocaleString('en-US')}
+              <span className="text-xs font-normal text-slate-400 mr-1.5">ر.س</span>
+            </div>
+            <div className="text-[11px] text-amber-600/80 mt-1">متبقي غير محصل</div>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+            <Clock className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Card 4: عروض الأسعار */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+          <div>
+            <div className="text-xs font-semibold text-slate-500">عروض الأسعار</div>
+            <div className="text-2xl font-bold text-[#202D3B] mt-1.5 tracking-tight">
+              {filteredData.quotationsCount}
+              <span className="text-xs font-normal text-slate-400 mr-1.5">عرض</span>
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">عروض الأسعار الصادرة</div>
+          </div>
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 text-[#202D3B] flex items-center justify-center shrink-0">
+            <ScrollText className="w-6 h-6" />
+          </div>
+        </div>
+
+      </div>
+
+      {/* Quick Actions Action Bar (Mockup 1) */}
+      <div className="flex flex-wrap items-center gap-2.5 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
+        <Link
+          href="/quotations/new"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white text-xs font-bold shadow-sm shadow-[#C59A55]/20 transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span>عرض سعر جديد</span>
+        </Link>
+        <Link
+          href="/invoices/new"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-[#C59A55]/10 border border-slate-200 hover:border-[#C59A55]/40 text-[#202D3B] text-xs font-bold transition-all"
+        >
+          <Receipt className="w-4 h-4 text-[#C59A55]" />
+          <span>فاتورة جديدة</span>
+        </Link>
+        <Link
+          href="/receipt-vouchers/new"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-slate-700 text-xs font-semibold transition-all"
+        >
+          <ArrowDownLeft className="w-4 h-4 text-emerald-600" />
+          <span>سند قبض</span>
+        </Link>
+        <Link
+          href="/payment-vouchers/new"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-700 text-xs font-semibold transition-all"
+        >
+          <ArrowUpRight className="w-4 h-4 text-rose-600" />
+          <span>سند صرف</span>
+        </Link>
+      </div>
+
+      {/* Two Column Layout: Recent Invoices & Due Customers */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left/Main Column: أحدث الفواتير (8 cols) */}
+        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col">
+          <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-[#202D3B] text-base">أحدث الفواتير</h3>
+              <p className="text-xs text-slate-400 mt-0.5">سجل بآخر الفواتير الصادرة وحالات سدادها</p>
+            </div>
+            <Link 
+              href="/invoices" 
+              className="text-xs font-semibold text-[#C59A55] hover:underline flex items-center gap-1"
+            >
+              <span>عرض الكل</span>
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="overflow-x-auto flex-1">
+            <table className="w-full text-right text-xs">
+              <thead className="bg-slate-50/70 text-slate-500 border-b border-slate-100 font-semibold">
+                <tr>
+                  <th className="py-3 px-4">رقم الفاتورة</th>
+                  <th className="py-3 px-4">العميل</th>
+                  <th className="py-3 px-4">التاريخ</th>
+                  <th className="py-3 px-4">المبلغ</th>
+                  <th className="py-3 px-4">الحالة</th>
+                  <th className="py-3 px-4 text-center">الإجراءات</th>
                 </tr>
               </thead>
-              <tbody className="text-[13px]">
-                {invoices.map((row, i) => (
-                  <tr key={i} onClick={() => router.push(`/invoices/${row.id}`)} className="border-b border-border/50 last:border-0 hover:bg-background transition-colors cursor-pointer">
-                    <td className="px-5 py-3">
-                      <div className="font-mono text-[12px] text-foreground font-medium">{row.invoice_number || `INV-${String(i + 1).padStart(3, '0')}`}</div>
-                    </td>
-                    <td className="px-5 py-3 text-foreground">{row.customers?.name || 'عميل غير محدد'}</td>
-                    <td className="px-5 py-3"><StatusPill status={row.status || 'pending'} /></td>
-                    <td className="px-5 py-3 text-left tabular-nums font-medium text-foreground">
-                      {Number(row.total || 0).toLocaleString()} <span className="text-[10px] text-muted-foreground/80 font-normal">{t('common.sar')}</span>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-slate-100">
+                {invoices.slice(0, 5).map((inv) => {
+                  const customer = customers.find(c => c.id === inv.customerId);
+                  
+                  // Status badge helper
+                  const isPaid = inv.paymentStatus === 'paid';
+                  const isPartial = inv.paymentStatus === 'partial';
+
+                  return (
+                    <tr key={inv.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-[#202D3B]">
+                        <Link href={`/invoices/${inv.id}`} className="hover:text-[#C59A55] transition-colors">
+                          {inv.number}
+                        </Link>
+                      </td>
+                      <td className="py-3.5 px-4 font-medium text-slate-800">
+                        {customer?.name || inv.snapshotCustomer?.name || 'عميل نقدي'}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500 font-mono">
+                        {formatDate(inv.date)}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-[#202D3B]">
+                        {inv.total.toLocaleString('en-US')} ر.س
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {isPaid ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            مدفوعة
+                          </span>
+                        ) : isPartial ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            جزئية
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            غير مدفوعة
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Link
+                            href={`/invoices/${inv.id}`}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                            title="معاينة"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Link>
+                          <Link
+                            href={`/invoices/${inv.id}?print=true`}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#C59A55] hover:bg-[#C59A55]/10 transition-colors"
+                            title="طباعة"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* AI Reader Card */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[#FFE2A8] to-[#E8B96B] flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-[#7A5A1A]" />
+        {/* Right Column: أصحاب الأرصدة المستحقة (4 cols) */}
+        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col p-5">
+          <div className="border-b border-slate-100 pb-4 mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-[#202D3B] text-base">الأرصدة المستحقة</h3>
+              <p className="text-xs text-slate-400 mt-0.5">عملاء لديهم مبالغ غير محصلة</p>
             </div>
-            <h3 className="text-[14px] font-semibold text-foreground">قراءة AI</h3>
+            <span className="px-2 py-0.5 bg-rose-50 text-rose-700 text-xs font-bold rounded-md">
+              {customersWithDue.length} عملاء
+            </span>
           </div>
-          <span className="text-[10px] bg-[#FEF6E3] dark:bg-[#3a3520] text-[#7A5A1A] dark:text-[#E8B96B] px-2 py-0.5 rounded-full font-bold">جديد</span>
+
+          <div className="space-y-3 flex-1 overflow-y-auto">
+            {customersWithDue.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-400">
+                لا توجد مستحقات متأخرة على العملاء حالياً
+              </div>
+            ) : (
+              customersWithDue.map((c) => (
+                <div 
+                  key={c.id} 
+                  className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs text-[#202D3B] truncate">{c.name}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 font-mono">{c.phone}</div>
+                  </div>
+                  <div className="text-left shrink-0">
+                    <div className="text-xs font-bold text-rose-600">
+                      {c.balance.toLocaleString('en-US')} ر.س
+                    </div>
+                    <Link
+                      href={`/customers/${c.id}/statement`}
+                      className="text-[11px] font-semibold text-[#C59A55] hover:underline inline-block mt-0.5"
+                    >
+                      كشف حساب
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-100 text-center">
+            <Link
+              href="/customers"
+              className="text-xs font-semibold text-slate-600 hover:text-[#C59A55] transition-colors"
+            >
+              عرض قائمة جميع العملاء ←
+            </Link>
+          </div>
         </div>
-        <div className="p-5">
-          <p className="text-[13px] text-muted-foreground leading-relaxed mb-4">
-            ارفع أي عرض سعر خارجي (PDF أو صورة) واترك الذكاء الاصطناعي يستخرج البيانات ويحوّلها لفاتورة.
-          </p>
-          <button onClick={() => router.push('/ai-reader')} className="w-full flex items-center justify-center gap-2 h-11 bg-gradient-to-r from-[#A88732] to-[#D4AC4A] hover:from-[#B8972A] hover:to-[#E4BC5A] text-white rounded-xl text-[13px] font-semibold shadow-md transition-all hover:-translate-y-0.5">
-            <Upload className="w-4 h-4" />
-            <span>ارفع ملف</span>
-          </button>
-        </div>
+
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h3 className="text-[13px] font-semibold text-muted-foreground/80 uppercase tracking-wider mb-3">الإجراءات السريعة</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <QuickAction icon={Sparkles} title="قراءة عرض خارجي" desc="حوّل أي عرض لفاتورة" badge="AI" onClick={() => router.push('/ai-reader')} />
-          <QuickAction icon={ScrollText} title={t('dashboard.new_quotation')} desc="أنشئ عرض احترافي" onClick={() => router.push('/quotations/new')} />
-          <QuickAction icon={Receipt} title="فاتورة سريعة" desc="فاتورة ضريبية في ثواني" onClick={() => router.push('/invoices/new')} />
-          <QuickAction icon={Users} title="إضافة عميل" desc="سجّل عميل جديد" onClick={() => router.push('/customers')} />
-        </div>
-      </div>
     </div>
-  );
-}
-
-function QuickAction({ icon: Icon, title, desc, badge, onClick }: any) {
-  return (
-    <button onClick={onClick} className="text-right p-4 bg-card border border-border rounded-xl hover:border-[#5B5BD6]/30 hover:shadow-md transition-all group">
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-9 h-9 rounded-lg bg-muted group-hover:bg-[#5B5BD6] flex items-center justify-center transition-colors">
-          <Icon className="w-4.5 h-4.5 text-muted-foreground group-hover:text-white transition-colors" />
-        </div>
-        {badge && <span className="text-[10px] bg-gradient-to-r from-[#FFE2A8] to-[#E8B96B] text-[#7A5A1A] px-1.5 py-0.5 rounded-full font-bold">{badge}</span>}
-      </div>
-      <div className="text-[13px] font-medium text-foreground mb-0.5">{title}</div>
-      <div className="text-[11px] text-muted-foreground/80">{desc}</div>
-    </button>
   );
 }

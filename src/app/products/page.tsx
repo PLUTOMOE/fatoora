@@ -1,260 +1,307 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { Package, Plus, Search, Edit2, Trash2, Loader2, X } from 'lucide-react';
-import { useTranslation } from '@/hooks/useTranslation';
-import { useStore } from '@/store/useStore';
-import { createClient } from '@/lib/supabase/client';
+import React, { useState, useMemo } from 'react';
+import { 
+  Plus, Search, Package, Edit3, Trash2, 
+  CheckCircle2, X, Save 
+} from 'lucide-react';
+import { useZajelStore } from '@/store/zajelStore';
+import { ProductItem } from '@/types/zajel';
 
-const blankForm = { name: '', description: '', sku: '', price: '', tax_rate: '15' };
+export default function ProductsPage() {
+  const { products, addProduct, updateProduct, deleteProduct } = useZajelStore();
 
-export default function ProductsList() {
-  const { t } = useTranslation();
-  const { activeEntity } = useStore();
-  const supabase = createClient();
-
-  const [products, setProducts] = useState<any[]>([]);
-  const [filtered, setFiltered] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
-  const [form, setForm] = useState(blankForm);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const resolveEntityId = useCallback(async () => {
-    if (activeEntity?.name) {
-      const { data } = await supabase.from('entities').select('id').eq('name', activeEntity.name).single();
-      if (data) return data.id;
-    }
-    const { data } = await supabase.from('entities').select('id').limit(1).single();
-    return data?.id || null;
-  }, [activeEntity]);
+  // Form states
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [unit, setUnit] = useState('خدمة');
+  const [price, setPrice] = useState<number>(500);
+  const [taxRate, setTaxRate] = useState<number>(15);
+  const [status, setStatus] = useState<'active' | 'inactive'>('active');
 
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const entId = await resolveEntityId();
-      if (entId) {
-        const { data } = await supabase.from('products').select('*').eq('entity_id', entId).order('created_at', { ascending: false });
-        setProducts(data || []);
-        setFiltered(data || []);
-      }
-    } catch (e) { console.error(e); }
-    setLoading(false);
-  }, [resolveEntityId]);
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.code.toLowerCase().includes(search.toLowerCase()) ||
+      (p.description && p.description.toLowerCase().includes(search.toLowerCase()))
+    );
+  }, [products, search]);
 
-  useEffect(() => { fetchProducts(); }, [activeEntity]);
-
-  // Live search filter
-  useEffect(() => {
-    if (!search.trim()) { setFiltered(products); return; }
-    const q = search.toLowerCase();
-    setFiltered(products.filter(p => p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q)));
-  }, [search, products]);
-
-  const openCreate = () => { setEditingProduct(null); setForm(blankForm); setShowModal(true); };
-  const openEdit = (p: any) => {
-    setEditingProduct(p);
-    setForm({ name: p.name, description: p.description || '', sku: p.sku || '', price: String(p.price), tax_rate: String(p.tax_rate ?? 15) });
-    setShowModal(true);
+  const openNewModal = () => {
+    setEditingId(null);
+    setCode(`SRV-${String(products.length + 1).padStart(3, '0')}`);
+    setName('');
+    setDescription('');
+    setUnit('جلسة');
+    setPrice(1000);
+    setTaxRate(15);
+    setStatus('active');
+    setModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const openEditModal = (p: ProductItem) => {
+    setEditingId(p.id);
+    setCode(p.code);
+    setName(p.name);
+    setDescription(p.description || '');
+    setUnit(p.unit);
+    setPrice(p.price);
+    setTaxRate(p.taxRate);
+    setStatus(p.status);
+    setModalOpen(true);
+  };
+
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const payload = { name: form.name, description: form.description, sku: form.sku, price: parseFloat(form.price || '0'), tax_rate: parseFloat(form.tax_rate) };
-      if (editingProduct) {
-        await supabase.from('products').update(payload).eq('id', editingProduct.id);
-      } else {
-        const entId = await resolveEntityId();
-        if (!entId) throw new Error('يرجى إنشاء شركة أولاً');
-        await supabase.from('products').insert({ ...payload, entity_id: entId });
-      }
-      await fetchProducts();
-      setShowModal(false);
-    } catch (err: any) { alert(err.message); }
-    setIsSubmitting(false);
-  };
+    if (!name.trim()) return;
 
-  const handleDelete = async (p: any) => {
-    if (!confirm(`هل تريد حذف "${p.name}"؟`)) return;
-    setDeletingId(p.id);
-    try {
-      await supabase.from('products').delete().eq('id', p.id);
-      await fetchProducts();
-    } catch (e: any) { alert(e.message); }
-    setDeletingId(null);
-  };
+    if (editingId) {
+      updateProduct(editingId, {
+        code,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        unit,
+        price: Number(price) || 0,
+        taxRate: Number(taxRate) || 15,
+        status,
+      });
+    } else {
+      addProduct({
+        code: code || `SRV-${String(products.length + 1).padStart(3, '0')}`,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        unit,
+        price: Number(price) || 0,
+        taxRate: Number(taxRate) || 15,
+        status,
+      });
+    }
 
-  if (loading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground/80" /></div>;
+    setModalOpen(false);
+  };
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="space-y-6" dir="rtl">
+      
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-[22px] font-bold text-foreground">{t('pages.products.title')}</h1>
-          <p className="text-[13px] text-muted-foreground mt-0.5">
-            {products.length === 0 ? 'لا يوجد منتجات بعد' : `${products.length} منتج وخدمة مسجلة`}
-          </p>
+          <h2 className="text-xl font-bold text-[#202D3B]">الأصناف والخدمات</h2>
+          <p className="text-xs text-slate-500 mt-0.5">قائمة المنتجات والخدمات لتسهيل إضافة البنود في الفواتير وعروض الأسعار</p>
         </div>
-        <button onClick={openCreate} className="flex items-center gap-1.5 h-9 px-4 bg-primary text-primary-foreground rounded-lg text-[13px] font-medium hover:opacity-90 transition-opacity">
-          <Plus className="w-4 h-4" /><span>إضافة منتج</span>
+
+        <button
+          onClick={openNewModal}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white text-xs font-bold shadow-sm shadow-[#C59A55]/20 transition-all self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          <span>إضافة صنف أو خدمة</span>
         </button>
       </div>
 
       {/* Search Bar */}
-      <div className="relative">
-        <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="ابحث بالاسم أو الرمز (SKU)..."
-          className="w-full h-10 pr-10 pl-4 bg-card border border-border rounded-xl text-[13px] focus:outline-none focus:border-[#5B5BD6] transition-colors"
-        />
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs text-xs">
+        <div className="relative max-w-md">
+          <Search className="w-4 h-4 absolute right-3.5 top-3 text-slate-400" />
+          <input
+            type="text"
+            placeholder="البحث باسم الصنف أو الكود أو الوصف..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-10 pl-3.5 py-2 text-[#202D3B] placeholder-slate-400 focus:outline-none focus:border-[#C59A55]"
+          />
+        </div>
       </div>
 
-      {/* Products Grid - Mobile Cards / Desktop Table */}
-      {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
-          <Package className="w-10 h-10 text-muted-foreground/30" />
-          <p className="text-[13px]">{search ? 'لا توجد نتائج للبحث' : 'لا يوجد منتجات في هذه الشركة'}</p>
-          {!search && (
-            <button onClick={openCreate} className="text-[13px] text-[#5B5BD6] font-medium hover:underline">أضف أول منتج الآن</button>
-          )}
-        </div>
-      ) : (
-        <>
-          {/* Mobile: Card Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:hidden">
-            {filtered.map(p => (
-              <div key={p.id} className="bg-card border border-border rounded-xl p-4 space-y-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-lg bg-muted border border-border flex items-center justify-center flex-shrink-0">
-                      <Package className="w-4 h-4 text-muted-foreground/70" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-[13px] text-foreground">{p.name}</div>
-                      {p.sku && <div className="text-[11px] font-mono text-muted-foreground">{p.sku}</div>}
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => openEdit(p)} className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground transition-colors">
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => handleDelete(p)} disabled={deletingId === p.id} className="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-[#E5484D] disabled:opacity-40">
-                      {deletingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-                {p.description && <p className="text-[11px] text-muted-foreground">{p.description}</p>}
-                <div className="flex items-center justify-between pt-1 border-t border-border/50">
-                  <span className="text-[13px] font-bold text-foreground tabular-nums">{Number(p.price).toLocaleString()} <span className="text-[10px] font-normal text-muted-foreground">ر.س</span></span>
-                  <span className="text-[11px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{p.tax_rate}% ضريبة</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Desktop: Table */}
-          <div className="hidden lg:block bg-card border border-border rounded-xl overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border text-[11px] text-muted-foreground/80 uppercase tracking-wider">
-                  <th className="text-right font-medium px-5 py-3">المنتج / الخدمة</th>
-                  <th className="text-right font-medium px-5 py-3">الوصف</th>
-                  <th className="text-right font-medium px-5 py-3">السعر</th>
-                  <th className="text-right font-medium px-5 py-3">الضريبة</th>
-                  <th className="w-20 px-5 py-3"></th>
+      {/* Products Table */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-right text-xs">
+            <thead className="bg-slate-50/70 text-slate-500 border-b border-slate-200 font-semibold">
+              <tr>
+                <th className="py-3 px-4">كود الصنف</th>
+                <th className="py-3 px-4">اسم الصنف أو الخدمة</th>
+                <th className="py-3 px-4">الوصف</th>
+                <th className="py-3 px-4 text-center">الوحدة</th>
+                <th className="py-3 px-4 text-center">السعر الافتراضي</th>
+                <th className="py-3 px-4 text-center">الضريبة</th>
+                <th className="py-3 px-4 text-center">الحالة</th>
+                <th className="py-3 px-4 text-center">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                    لا توجد أصناف أو خدمات مطابقة للبحث
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="text-[13px] divide-y divide-border/50">
-                {filtered.map(p => (
-                  <tr key={p.id} className="hover:bg-muted/30 transition-colors group">
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center flex-shrink-0">
-                          <Package className="w-4 h-4 text-muted-foreground/70" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-foreground">{p.name}</div>
-                          {p.sku && <div className="text-[11px] font-mono text-muted-foreground/70">{p.sku}</div>}
-                        </div>
-                      </div>
+              ) : (
+                filteredProducts.map((p) => (
+                  <tr key={p.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="py-3.5 px-4 font-mono font-bold text-[#202D3B]">
+                      {p.code}
                     </td>
-                    <td className="px-5 py-3 text-muted-foreground text-[12px] max-w-[200px] truncate">{p.description || '—'}</td>
-                    <td className="px-5 py-3 font-medium text-foreground tabular-nums">
-                      {Number(p.price).toLocaleString()} <span className="text-[10px] text-muted-foreground font-normal">ر.س</span>
+                    <td className="py-3.5 px-4 font-bold text-slate-800">
+                      {p.name}
                     </td>
-                    <td className="px-5 py-3">
-                      <span className="text-[11px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{p.tax_rate}%</span>
+                    <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">
+                      {p.description || '-'}
                     </td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEdit(p)} className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground transition-colors">
-                          <Edit2 className="w-3.5 h-3.5" />
+                    <td className="py-3.5 px-4 text-center text-slate-600">
+                      {p.unit}
+                    </td>
+                    <td className="py-3.5 px-4 text-center font-bold font-mono text-[#202D3B]">
+                      {p.price.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
+                    </td>
+                    <td className="py-3.5 px-4 text-center font-mono text-slate-600">
+                      {p.taxRate}%
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                        p.status === 'active' 
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                          : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {p.status === 'active' ? 'نشط' : 'غير نشط'}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => openEditModal(p)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                          title="تعديل الصنف"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => handleDelete(p)} disabled={deletingId === p.id} className="w-7 h-7 flex items-center justify-center rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-muted-foreground hover:text-[#E5484D] disabled:opacity-40">
-                          {deletingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                        <button
+                          onClick={() => deleteProduct(p.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          title="حذف الصنف"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold text-foreground">{editingProduct ? 'تعديل المنتج' : 'إضافة منتج أو خدمة'}</h2>
-              <button onClick={() => setShowModal(false)} className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground"><X className="w-4 h-4" /></button>
+      {/* Add / Edit Product Modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-slate-200 text-right">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+              <h3 className="text-base font-bold text-[#202D3B]">
+                {editingId ? 'تعديل بيانات الصنف أو الخدمة' : 'إضافة صنف أو خدمة جديدة'}
+              </h3>
+              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-5 space-y-3">
-              <div>
-                <label className="block text-[12px] font-medium text-foreground mb-1.5">اسم المنتج أو الخدمة *</label>
-                <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full h-10 px-3 bg-background border border-border rounded-lg text-[13px] focus:outline-none focus:border-[#5B5BD6]" placeholder="مثال: استشارة تقنية" />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-foreground mb-1.5">الوصف (اختياري)</label>
-                <input value={form.description} onChange={e => setForm({...form, description: e.target.value})} className="w-full h-10 px-3 bg-background border border-border rounded-lg text-[13px] focus:outline-none focus:border-[#5B5BD6]" placeholder="وصف مختصر للمنتج..." />
-              </div>
+
+            <form onSubmit={handleSave} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] font-medium text-foreground mb-1.5">السعر (ر.س) *</label>
-                  <input required value={form.price} onChange={e => setForm({...form, price: e.target.value})} type="number" step="0.01" min="0" className="w-full h-10 px-3 bg-background border border-border rounded-lg text-[13px] focus:outline-none focus:border-[#5B5BD6]" placeholder="0.00" />
+                  <label className="block font-semibold text-slate-700 mb-1">كود الصنف *</label>
+                  <input
+                    type="text"
+                    required
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-[#202D3B] outline-none focus:border-[#C59A55]"
+                  />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-medium text-foreground mb-1.5">الرمز (SKU)</label>
-                  <input value={form.sku} onChange={e => setForm({...form, sku: e.target.value})} className="w-full h-10 px-3 bg-background border border-border rounded-lg text-[13px] font-mono focus:outline-none focus:border-[#5B5BD6]" placeholder="PRD-001" />
+                  <label className="block font-semibold text-slate-700 mb-1">الوحدة *</label>
+                  <input
+                    type="text"
+                    required
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    placeholder="جلسة، حبة، شهر..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[#202D3B] outline-none focus:border-[#C59A55]"
+                  />
                 </div>
               </div>
+
               <div>
-                <label className="block text-[12px] font-medium text-foreground mb-1.5">نسبة الضريبة</label>
-                <select value={form.tax_rate} onChange={e => setForm({...form, tax_rate: e.target.value})} className="w-full h-10 px-3 bg-background border border-border rounded-lg text-[13px] focus:outline-none focus:border-[#5B5BD6]">
-                  <option value="15">ضريبة قيمة مضافة (15%)</option>
-                  <option value="0">معفى ضريبياً (0%)</option>
-                </select>
+                <label className="block font-semibold text-slate-700 mb-1">اسم الصنف أو الخدمة *</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="مثال: خدمة استشارية، تطوير برمجيات..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[#202D3B] outline-none focus:border-[#C59A55]"
+                />
               </div>
-              <div className="flex gap-2 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 h-10 bg-muted border border-border text-muted-foreground rounded-lg text-[13px] font-medium hover:bg-background transition-colors">إلغاء</button>
-                <button type="submit" disabled={isSubmitting} className="flex-1 h-10 bg-primary text-primary-foreground rounded-lg text-[13px] font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity">
-                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : (editingProduct ? 'حفظ التعديلات' : 'إضافة المنتج')}
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">الوصف</label>
+                <textarea
+                  rows={2}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="تفاصيل ومواصفات البند..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[#202D3B] outline-none focus:border-[#C59A55]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">السعر الافتراضي (ر.س) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    required
+                    value={price}
+                    onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-[#202D3B] outline-none focus:border-[#C59A55]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">نسبة الضريبة (%)</label>
+                  <input
+                    type="number"
+                    value={taxRate}
+                    onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-mono text-[#202D3B] outline-none focus:border-[#C59A55]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-[#C59A55] text-white font-bold hover:bg-[#B38944] shadow-xs"
+                >
+                  حفظ الصنف
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
     </div>
   );
 }

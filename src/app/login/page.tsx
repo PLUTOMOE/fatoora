@@ -8,6 +8,7 @@ import {
   ArrowLeft, Loader2, CheckCircle2, Zap, Eye, EyeOff,
   FileSpreadsheet, Sparkles, Building2, Check, ArrowUpRight
 } from 'lucide-react';
+import { ZajelLogo } from '@/components/shared/ZajelLogo';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -121,32 +122,30 @@ export default function LoginPage() {
             {/* Top Brand Tag */}
             <div>
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 ring-1 ring-white/20">
-                  <Receipt className="text-white w-6 h-6" />
-                </div>
+                <ZajelLogo variant="dark" size="md" />
                 <div>
                   <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                    <span>فاتورة</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">PRO</span>
+                    <span>زاجل النخبة</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C59A55]/20 border border-[#C59A55]/40 text-[#C59A55]">ERP</span>
                   </h1>
-                  <p className="text-[11px] text-slate-400">المنظومة المحاسبية المتكاملة لإدارة الفواتير</p>
+                  <p className="text-[11px] text-slate-400">عروض الأسعار • الفواتير • كشوف الحساب • سندات القبض والصرف</p>
                 </div>
               </div>
 
               {/* Catchphrase */}
               <div className="space-y-3 max-w-lg">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  معتمد ومتوافق مع اشتراطات هيئة الزكاة (ZATCA)
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C59A55]/10 border border-[#C59A55]/30 text-[#C59A55] text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-[#C59A55] animate-pulse"></span>
+                  نظام مالي وإداري معتمد وسريع
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-extrabold leading-tight text-white tracking-tight">
-                  إدارة ذكية للفواتير، <br />
-                  <span className="bg-gradient-to-r from-indigo-400 via-indigo-300 to-violet-400 bg-clip-text text-transparent">
-                    وعروض الأسعار وكشوف الحساب
+                  إدارة ذكية لعروض الأسعار، <br />
+                  <span className="bg-gradient-to-r from-[#C59A55] via-amber-200 to-[#C59A55] bg-clip-text text-transparent">
+                    والفواتير وسندات القبض والصرف
                   </span>
                 </h2>
                 <p className="text-sm text-slate-400 leading-relaxed">
-                  أنشئ فواتيرك الضريبية وعروض الأسعار بدقة، وشارك كشوف الحساب الاحترافية لعملائك مع تتبع مباشر للأرصدة والمستحقات.
+                  أنشئ عروض أسعارك وحولها لفواتير بضغطة زر، وتتبع كشوف حسابات العملاء بدقة محاسبية متناهية ونماذج طباعة A4 فاخرة.
                 </p>
               </div>
             </div>
@@ -366,6 +365,20 @@ export default function LoginPage() {
                         <ArrowLeft className="w-4 h-4 rtl:-scale-x-100" />
                       </>
                     )}
+                  </button>
+
+                  {/* Quick Demo Access for Zajel Al Nokhba */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      document.cookie = "zajel_demo_session=true; path=/; max-age=2592000";
+                      router.push('/');
+                      router.refresh();
+                    }}
+                    className="w-full bg-[#C59A55]/15 hover:bg-[#C59A55]/25 border border-[#C59A55]/40 text-[#C59A55] font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>دخول تجريبي فوري إلى نظام زاجل النخبة</span>
                   </button>
 
                   {/* Switch between Login and Signup */}

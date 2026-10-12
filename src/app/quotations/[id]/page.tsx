@@ -1,270 +1,275 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { ArrowRight, Send, CheckCircle, Loader2, Printer } from 'lucide-react';
-import { StatusPill } from '@/components/ui/StatusPill';
-import { useStore } from '@/store/useStore';
-import { getInvoiceDetails } from '@/lib/supabase/services';
-import { formatCurrency } from '@/lib/format';
-import { ClassicTemplate } from '@/components/invoice-templates/ClassicTemplate';
-import { ModernTemplate } from '@/components/invoice-templates/ModernTemplate';
-import { MinimalTemplate } from '@/components/invoice-templates/MinimalTemplate';
-import { EliteTemplate } from '@/components/invoice-templates/EliteTemplate';
-import { CorporateTemplate } from '@/components/invoice-templates/CorporateTemplate';
-import { CompactTemplate } from '@/components/invoice-templates/CompactTemplate';
-import { RoyalTemplate } from '@/components/invoice-templates/RoyalTemplate';
-import { ExecutiveTemplate } from '@/components/invoice-templates/ExecutiveTemplate';
-import { createClient } from '@/lib/supabase/client';
+import React, { useEffect, use, Suspense } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { 
+  ArrowRight, Printer, ArrowRightLeft, 
+  Copy, Download, Building2, CheckCircle2 
+} from 'lucide-react';
+import { useZajelStore } from '@/store/zajelStore';
+import { ZajelLogo } from '@/components/shared/ZajelLogo';
+import { formatDate, tafqeetArabic } from '@/lib/zajelUtils';
 
-export default function QuotationDetail() {
+function QuotationDetail({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   const router = useRouter();
-  const params = useParams();
-  const id = params.id as string;
-  const { activeEntity } = useStore();
-  
-  const [data, setData] = useState<{ invoice: any, items: any[] } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [entityData, setEntityData] = useState<any>(null);
-  const [settings, setSettings] = useState<any>({
-    template: 'elite',
-    logo_url: '',
-    stamp_url: '',
-    signature_url: '',
-    default_notes: ''
-  });
+  const searchParams = useSearchParams();
+  const { quotations, customers, settings, convertQuotationToInvoice, duplicateQuotation } = useZajelStore();
 
-  // Load settings from localStorage
+  const quotation = quotations.find((q) => q.id === resolvedParams.id);
+  const customer = quotation ? customers.find((c) => c.id === quotation.customerId) : null;
+
   useEffect(() => {
-    const stored = localStorage.getItem('invoice_settings');
-    if (stored) {
-      try { setSettings(JSON.parse(stored)); } catch {}
+    if (searchParams.get('print') === 'true') {
+      setTimeout(() => {
+        window.print();
+      }, 500);
     }
-  }, []);
+  }, [searchParams]);
 
-  // Fetch entity data
-  useEffect(() => {
-    const fetchEntity = async () => {
-      if (!activeEntity?.name) return;
-      try {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from('entities')
-          .select('*')
-          .eq('name', activeEntity.name)
-          .single();
-        if (data) setEntityData(data);
-      } catch (e) { console.error('Failed to load entity', e); }
-    };
-    fetchEntity();
-  }, [activeEntity?.name]);
-
-  useEffect(() => {
-    if (!id) return;
-    const fetchInvoice = async () => {
-      try {
-        const result = await getInvoiceDetails(id);
-        setData(result);
-      } catch (error) {
-        console.error('Error fetching quotation:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInvoice();
-  }, [id]);
-
-  if (loading) {
+  if (!quotation) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
+        <p className="text-sm text-slate-500 mb-4">عرض السعر المطلوب غير موجود</p>
+        <Link href="/quotations" className="text-xs font-bold text-[#C59A55] hover:underline">
+          العودة لقائمة عروض الأسعار
+        </Link>
       </div>
     );
   }
 
-  if (!data?.invoice) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-        <p className="text-muted-foreground">لم يتم العثور على عرض السعر</p>
-        <button onClick={() => router.push('/quotations')} className="text-primary hover:underline">
-          العودة لعروض الأسعار
-        </button>
-      </div>
-    );
-  }
-
-  const { invoice, items } = data;
-  const customer = invoice.customers;
-  const issueDateStr = invoice.issue_date ? new Date(invoice.issue_date).toLocaleDateString("ar-SA", { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-  const dueDateStr = invoice.due_date ? new Date(invoice.due_date).toLocaleDateString("ar-SA", { year: 'numeric', month: 'long', day: 'numeric' }) : '';
-
-  // Build template data from DB
-  const templateData = {
-    entity: {
-      name: entityData?.name || activeEntity?.name || '',
-      address: entityData?.address || '',
-      phone: entityData?.phone || '',
-      tax_number: entityData?.tax_number || '',
-      cr_number: entityData?.cr_number || '',
-      logo_url: entityData?.logo_url || settings.logo_url
-    },
-    customer: {
-      name: customer?.name || '',
-      address: customer?.address || '',
-      phone: customer?.phone || '',
-      tax_number: customer?.tax_number || ''
-    },
-    items: items && items.length > 0 ? items.map(item => ({
-      name: item.description,
-      qty: item.quantity,
-      price: item.unit_price,
-      tax_rate: item.tax_rate
-    })) : [{ name: 'بند فارغ', qty: 0, price: 0, tax_rate: 0 }],
-    invoice: {
-      number: invoice.invoice_number,
-      date: invoice.issue_date,
-      due_date: invoice.due_date || '',
-      subtotal: invoice.subtotal,
-      tax: invoice.tax_total,
-      discount: invoice.discount || 0,
-      total: invoice.total
-    },
-    settings: {
-      stamp_url: settings.stamp_url || '',
-      signature_url: settings.signature_url || '',
-      notes: invoice.notes || '',
-      template: settings.template
-    },
-    type: 'quotation' as const
-  };
-
-  const renderTemplate = () => {
-    switch (settings.template) {
-      case 'classic': return <ClassicTemplate {...templateData} />;
-      case 'modern': return <ModernTemplate {...templateData} />;
-      case 'minimal': return <MinimalTemplate {...templateData} />;
-      case 'elite': return <EliteTemplate {...templateData} />;
-      case 'corporate': return <CorporateTemplate {...templateData} />;
-      case 'compact': return <CompactTemplate {...templateData} />;
-      case 'royal': return <RoyalTemplate {...templateData} />;
-      case 'executive': return <ExecutiveTemplate {...templateData} />;
-      default: return <EliteTemplate {...templateData} />;
-    }
-  };
-
-  const updateQuotationStatus = async (newStatus: 'accepted' | 'rejected') => {
+  const handleConvert = () => {
     try {
-      const supabase = createClient();
-      await supabase.from('invoices').update({ status: newStatus }).eq('id', id);
-      setData(prev => prev ? { ...prev, invoice: { ...prev.invoice, status: newStatus } } : null);
-    } catch (err: any) {
-      alert('حدث خطأ: ' + err.message);
+      const invId = convertQuotationToInvoice(quotation.id);
+      router.push(`/invoices/${invId}`);
+    } catch (e: any) {
+      alert(e.message || 'حدث خطأ أثناء التحويل');
+    }
+  };
+
+  const handleDuplicate = () => {
+    const newId = duplicateQuotation(quotation.id);
+    if (newId) {
+      router.push(`/quotations/${newId}`);
     }
   };
 
   return (
-    <div className="space-y-5 print:space-y-0">
-      {/* Header - hidden in print */}
-      <div className="flex items-center justify-between no-print">
-        <div className="flex flex-wrap items-center gap-3">
-          <button onClick={() => router.push('/quotations')} className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded-md">
-            <ArrowRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <div>
-            <div className="flex items-center gap-2 mb-0.5">
-              <h1 className="text-[20px] font-semibold text-foreground">عرض سعر #{invoice.invoice_number}</h1>
-              <StatusPill status={invoice.status} />
-            </div>
-            <div className="text-[12px] text-muted-foreground/80">
-              صادرة بتاريخ {issueDateStr} · {activeEntity?.name}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {invoice.status !== 'accepted' && (
-            <button 
-              onClick={() => updateQuotationStatus('accepted')}
-              className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[12px] flex items-center gap-1.5 font-medium transition-colors"
-              title="قبول واعتماد عرض السعر"
-            >
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span>قبول العرض</span>
-            </button>
-          )}
-
-          {invoice.status !== 'rejected' && invoice.status !== 'accepted' && (
-            <button 
-              onClick={() => updateQuotationStatus('rejected')}
-              className="h-8 px-3 bg-card border border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-md text-[12px] flex items-center gap-1.5 font-medium transition-colors"
-              title="رفض عرض السعر"
-            >
-              <span>رفض</span>
-            </button>
-          )}
-
-          <button 
-            onClick={() => router.push(`/invoices/new?source_quotation_id=${invoice.id}`)}
-            className="h-8 px-3 bg-primary text-primary-foreground rounded-md text-[12px] hover:bg-primary/90 flex items-center gap-1.5 font-medium shadow-2xs"
-            title="إنشاء فاتورة رسمية من هذا العرض"
+    <div className="space-y-6 max-w-4xl mx-auto" dir="rtl">
+      
+      {/* Top Action Bar (Hidden when printing) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs print:hidden">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/quotations"
+            className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
           >
-            <CheckCircle className="w-3.5 h-3.5" />
-            <span>تحويل لفاتورة</span>
+            <ArrowRight className="w-5 h-5" />
+          </Link>
+          <div>
+            <h2 className="text-base font-bold text-[#202D3B]">عرض سعر: {quotation.number}</h2>
+            <p className="text-xs text-slate-500">حالة العرض: {quotation.status === 'converted' ? 'تم تحويله لفاتورة' : quotation.status}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {quotation.status !== 'converted' ? (
+            <button
+              onClick={handleConvert}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white text-xs font-bold shadow-xs transition-colors"
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+              <span>تحويل إلى فاتورة</span>
+            </button>
+          ) : (
+            <Link
+              href={`/invoices/${quotation.convertedToInvoiceId}`}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 text-xs font-bold transition-colors"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>الفاتورة المرتبطة</span>
+            </Link>
+          )}
+
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors"
+          >
+            <Printer className="w-4 h-4" />
+            <span>طباعة A4</span>
           </button>
-          <button onClick={() => window.print()} className="h-8 px-3 bg-card border border-border rounded-md text-[12px] hover:border-border/80 flex items-center gap-1.5">
-            <Printer className="w-3.5 h-3.5" />
-            <span>طباعة / PDF</span>
+
+          <button
+            onClick={handleDuplicate}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors"
+            title="نسخ العرض"
+          >
+            <Copy className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 print:block">
-        {/* Template */}
-        <div className="lg:col-span-2">
-          <div className="w-full overflow-hidden rounded-xl border border-border bg-card print:border-none print:rounded-none">
-            <div className="w-full overflow-x-auto p-0">
-              <div className="min-w-[750px] w-full print:min-w-0">
-                {renderTemplate()}
+      {/* Formal A4 Document Sheet */}
+      <div className="bg-white p-8 sm:p-12 rounded-2xl border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none print:rounded-none">
+        
+        {/* Document Header */}
+        <div className="flex items-start justify-between border-b-2 border-[#202D3B] pb-6 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-[#202D3B] tracking-tight">عرض سعر</h1>
+            <p className="text-xs text-slate-500 font-mono mt-0.5">QUOTATION</p>
+            <div className="mt-3 space-y-1 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">رقم العرض:</span>
+                <span className="font-mono font-bold text-[#202D3B]">{quotation.number}</span>
               </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">تاريخ الإصدار:</span>
+                <span className="font-mono text-slate-700">{formatDate(quotation.date)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">صالح حتى:</span>
+                <span className="font-mono text-slate-700">{formatDate(quotation.expiryDate)}</span>
+              </div>
+              {quotation.reference && (
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">مرجع العميل:</span>
+                  <span className="font-mono text-slate-700">{quotation.reference}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="text-left flex flex-col items-end">
+            <ZajelLogo variant="light" size="md" />
+            <div className="mt-2 text-xs text-slate-500 space-y-0.5 text-left" dir="ltr">
+              <p className="font-bold text-[#202D3B]">{settings.name}</p>
+              <p>CR: {settings.crNumber}</p>
+              <p>VAT: {settings.taxNumber}</p>
+              <p>{settings.phone} | {settings.city}</p>
             </div>
           </div>
         </div>
 
-        {/* Sidebar - hidden in print */}
-        <div className="space-y-3 no-print">
-          <div className="bg-card border border-border rounded-lg p-4">
-            <h3 className="text-[12px] font-semibold text-muted-foreground/80 uppercase tracking-wider mb-3">تفاصيل الحالة</h3>
-            <div className="text-[20px] font-semibold text-[#22C55E] tabular-nums mb-1">{formatCurrency(invoice.total)}</div>
-            <div className="text-[11px] text-muted-foreground mb-4">
-              {invoice.status === 'paid' ? 'تم الدفع بالكامل' : invoice.status === 'draft' ? 'مسودة' : 'في الانتظار'}
+        {/* Customer Details Box */}
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-8 grid grid-cols-2 gap-4 text-xs">
+          <div>
+            <span className="text-slate-400 block mb-1">بيانات العميل الموجه إليه العرض:</span>
+            <div className="font-bold text-sm text-[#202D3B]">{customer?.name || 'العميل'}</div>
+            {customer?.address && <div className="text-slate-600 mt-0.5">{customer.address}</div>}
+            {customer?.phone && <div className="text-slate-500 mt-0.5 font-mono">{customer.phone}</div>}
+          </div>
+          <div className="text-left" dir="ltr">
+            {customer?.taxNumber && (
+              <div className="text-slate-600">
+                <span className="text-slate-400">الرقم الضريبي: </span>
+                <span className="font-mono">{customer.taxNumber}</span>
+              </div>
+            )}
+            {customer?.crNumber && (
+              <div className="text-slate-600 mt-0.5">
+                <span className="text-slate-400">السجل التجاري: </span>
+                <span className="font-mono">{customer.crNumber}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Items Table */}
+        <div className="mb-8 overflow-hidden rounded-xl border border-slate-200">
+          <table className="w-full text-right text-xs">
+            <thead className="bg-[#202D3B] text-white font-semibold">
+              <tr>
+                <th className="py-3 px-4 w-12 text-center">#</th>
+                <th className="py-3 px-4">الوصف</th>
+                <th className="py-3 px-4 text-center">الوحدة</th>
+                <th className="py-3 px-4 text-center">الكمية</th>
+                <th className="py-3 px-4 text-center">سعر الوحدة</th>
+                <th className="py-3 px-4 text-center">الخصم</th>
+                <th className="py-3 px-4 text-left">الإجمالي</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {quotation.items.map((item, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="py-3 px-4 text-center font-mono text-slate-400">{idx + 1}</td>
+                  <td className="py-3 px-4 font-medium text-slate-800">{item.description}</td>
+                  <td className="py-3 px-4 text-center text-slate-600">{item.unit}</td>
+                  <td className="py-3 px-4 text-center font-mono">{item.quantity}</td>
+                  <td className="py-3 px-4 text-center font-mono">{item.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                  <td className="py-3 px-4 text-center font-mono text-slate-400">{item.discount > 0 ? item.discount.toLocaleString('en-US') : '-'}</td>
+                  <td className="py-3 px-4 text-left font-mono font-bold text-[#202D3B]">
+                    {item.total.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Totals & Tafqeet */}
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b border-slate-200 pb-8 mb-8">
+          <div className="space-y-2 flex-1">
+            <div className="text-xs font-semibold text-slate-400">المبلغ كتابة:</div>
+            <div className="text-xs font-bold text-[#202D3B] bg-slate-50 p-3 rounded-xl border border-slate-100">
+              {tafqeetArabic(quotation.total)}
             </div>
-            
-            <div className="space-y-2 text-[12px]">
-              <div className="flex justify-between"><span className="text-muted-foreground">تاريخ الاستحقاق</span><span>{dueDateStr || '--'}</span></div>
-            </div>
+            {quotation.terms && (
+              <div className="mt-4">
+                <div className="text-xs font-semibold text-slate-400 mb-1">الشروط والأحكام:</div>
+                <p className="text-[11px] text-slate-600 leading-relaxed bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">
+                  {quotation.terms}
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
-            <h3 className="text-[12px] font-semibold text-muted-foreground/80 uppercase tracking-wider mb-3">الجدول الزمني</h3>
-            <div className="space-y-3">
-              <Timeline icon={CheckCircle} color="#9B9B9B" title="تم الإصدار" desc={`بواسطة النظام - ${issueDateStr}`} />
+          <div className="w-full sm:w-80 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+            <div className="flex justify-between text-slate-600">
+              <span>المجموع الفرعي:</span>
+              <span className="font-mono">{quotation.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س</span>
+            </div>
+            {quotation.discount > 0 && (
+              <div className="flex justify-between text-rose-600">
+                <span>الخصم:</span>
+                <span className="font-mono">-{quotation.discount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س</span>
+              </div>
+            )}
+            <div className="flex justify-between text-slate-600">
+              <span>ضريبة القيمة المضافة (15%):</span>
+              <span className="font-mono">{quotation.vatAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س</span>
+            </div>
+            <div className="flex justify-between font-bold text-base text-[#202D3B] pt-2 border-t border-slate-200">
+              <span>المبلغ الإجمالي:</span>
+              <span className="font-mono text-[#C59A55]">{quotation.total.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س</span>
             </div>
           </div>
         </div>
+
+        {/* Signatures Area */}
+        <div className="grid grid-cols-2 gap-8 text-center text-xs pt-4">
+          <div>
+            <div className="font-bold text-[#202D3B] mb-12">اعتماد منشأة زاجل النخبة</div>
+            <div className="w-40 border-b border-dashed border-slate-400 mx-auto" />
+            <div className="text-[11px] text-slate-400 mt-1">الختم والتوقيع الرسمي</div>
+          </div>
+          <div>
+            <div className="font-bold text-[#202D3B] mb-12">موافقة وقبول العميل</div>
+            <div className="w-40 border-b border-dashed border-slate-400 mx-auto" />
+            <div className="text-[11px] text-slate-400 mt-1">اسم المفوض والتوقيع</div>
+          </div>
+        </div>
+
       </div>
+
     </div>
   );
 }
 
-function Timeline({ icon: Icon, color, title, desc }: any) {
+export default function QuotationViewPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: `${color}15` }}>
-        <Icon className="w-3 h-3" style={{ color }} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[12px] font-medium text-foreground">{title}</div>
-        <div className="text-[11px] text-muted-foreground/80 mt-0.5">{desc}</div>
-      </div>
-    </div>
+    <Suspense fallback={<div className="p-10 text-center text-slate-500 font-medium">جاري تحميل عرض السعر...</div>}>
+      <QuotationDetail params={params} />
+    </Suspense>
   );
 }

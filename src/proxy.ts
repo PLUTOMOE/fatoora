@@ -35,8 +35,10 @@ export async function proxy(request: NextRequest) {
   const isResetRoute = request.nextUrl.pathname.startsWith('/update-password')
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
 
-  // إذا لم يكن مسجلا وحاول الدخول لصفحات محمية، وجهه لتسجيل الدخول (باستثناء مسارات API)
-  if (!user && !isAuthRoute && !isResetRoute && !isApiRoute) {
+  const isDemoSession = request.cookies.get('zajel_demo_session')?.value === 'true'
+
+  // إذا لم يكن مسجلا وحاول الدخول لصفحات محمية، وجهه لتسجيل الدخول (باستثناء مسارات API وجلسة العرض التجريبي)
+  if (!user && !isDemoSession && !isAuthRoute && !isResetRoute && !isApiRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
