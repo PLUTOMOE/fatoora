@@ -6,6 +6,8 @@ interface Entity {
   address?: string;
   tax_number?: string;
   cr_number?: string;
+  logo_url?: string;
+  phone?: string;
 }
 
 interface AppState {
