@@ -1,22 +1,24 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   Home, ScrollText, Receipt, Users, 
   Package, ArrowDownLeft, ArrowUpRight, Settings, 
-  X, ChevronLeft
+  X, ChevronLeft, ArrowRightLeft, ChevronDown 
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useZajelStore } from '@/store/zajelStore';
 import { ZajelLogo } from '@/components/shared/ZajelLogo';
+import { CompanySwitcherModal } from '@/components/shared/CompanySwitcherModal';
 
 export function Sidebar() {
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useStore();
   const { themeMode, settings, getActiveCompany } = useZajelStore();
   const pathname = usePathname();
   const activeCompany = getActiveCompany();
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
 
   const navItems = [
     { label: 'الرئيسية', href: '/', icon: Home },
@@ -88,10 +90,23 @@ export function Sidebar() {
             }`}>
               {activeCompany?.name || settings.name}
             </span>
-            <span className="text-[10px] text-[#C59A55] font-semibold mt-0.5">
-              نظام الإدارة المالي
-            </span>
           </Link>
+
+          {/* Quick Company Switcher Pill */}
+          <button
+            type="button"
+            onClick={() => setShowCompanyModal(true)}
+            className={`mt-2 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all flex items-center gap-1.5 shadow-2xs ${
+              isLight 
+                ? 'bg-amber-50/80 text-[#C59A55] border-[#C59A55]/40 hover:bg-[#C59A55] hover:text-white' 
+                : 'bg-slate-800 text-amber-300 border-slate-700 hover:bg-slate-700 hover:text-white'
+            }`}
+            title="التبديل بين الشركات المسجلة"
+          >
+            <ArrowRightLeft className="w-3 h-3" />
+            <span>تبديل المنشأة</span>
+            <ChevronDown className="w-2.5 h-2.5 opacity-70" />
+          </button>
         </div>
 
         {/* Navigation Items */}
@@ -131,6 +146,12 @@ export function Sidebar() {
           <p className="text-[10px] text-slate-400">إصدار الشركات v3.0</p>
         </div>
       </aside>
+
+      {/* Interactive Modal for Quick Company Switching */}
+      <CompanySwitcherModal 
+        isOpen={showCompanyModal} 
+        onClose={() => setShowCompanyModal(false)} 
+      />
     </>
   );
 }
