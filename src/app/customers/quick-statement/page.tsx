@@ -86,25 +86,15 @@ function QuickStatementContent() {
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState<string>('');
 
-  // Total project amount & tax
-  const [projectTotal, setProjectTotal] = useState<number | ''>(10000);
+  // Total project amount & tax (starts completely blank)
+  const [projectTotal, setProjectTotal] = useState<number | ''>('');
   const [taxType, setTaxType] = useState<'none' | 'included' | 'excluded'>('none');
 
-  // Payments array
-  const [payments, setPayments] = useState<ProjectPayment[]>([
-    {
-      id: 'p-1',
-      date: new Date().toISOString().split('T')[0],
-      amount: 3000,
-      statement: 'دفعة أولى مقدمة عند بدء المشروع',
-      paymentMethod: 'bank_transfer',
-      reference: '',
-      notes: '',
-    }
-  ]);
+  // Payments array (starts completely empty)
+  const [payments, setPayments] = useState<ProjectPayment[]>([]);
 
-  const [notes, setNotes] = useState<string>('كشف حساب مشروع مستقل يوضح الدفعات المستلمة والمبلغ المتبقي.');
-  const [terms, setTerms] = useState<string>('يرجى سداد الدفعة المتبقية فور استكمال واستلام مراحل العمل المتفق عليها.');
+  const [notes, setNotes] = useState<string>('');
+  const [terms, setTerms] = useState<string>('');
 
   // UI feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -236,13 +226,13 @@ function QuickStatementContent() {
   const handleAddPayment = () => {
     const nextSeq = payments.length + 1;
     const remaining = calculations.remainingBalance;
-    const suggestedAmount = remaining > 0 ? remaining : 1000;
+    const suggestedAmount = remaining > 0 ? remaining : '';
 
     const newPayment: ProjectPayment = {
       id: 'p-' + Date.now(),
       date: new Date().toISOString().split('T')[0],
-      amount: suggestedAmount,
-      statement: `دفعة رقم ${nextSeq} من قيمة المشروع`,
+      amount: (suggestedAmount === '' ? '' : suggestedAmount) as any,
+      statement: `دفعة رقم ${nextSeq}`,
       paymentMethod: 'bank_transfer',
       reference: '',
       notes: '',
@@ -274,12 +264,8 @@ function QuickStatementContent() {
     setPayments(payments.map(p => p.id === id ? { ...p, [field]: value } : p));
   };
 
-  // Remove payment row
+  // Remove payment row (freely allows removing any row, including down to 0)
   const handleRemovePayment = (id: string) => {
-    if (payments.length <= 1) {
-      alert('يجب الإبقاء على دفعة واحدة على الأقل في الجدول.');
-      return;
-    }
     setPayments(payments.filter(p => p.id !== id));
   };
 
@@ -366,21 +352,13 @@ function QuickStatementContent() {
     setStatementDate(new Date().toISOString().split('T')[0]);
     setStartDate(new Date().toISOString().split('T')[0]);
     setEndDate('');
-    setProjectTotal(10000);
+    setProjectTotal('');
     setTaxType('none');
-    setPayments([
-      {
-        id: 'p-1',
-        date: new Date().toISOString().split('T')[0],
-        amount: 3000,
-        statement: 'دفعة أولى مقدمة عند بدء المشروع',
-        paymentMethod: 'bank_transfer',
-        reference: '',
-        notes: '',
-      }
-    ]);
+    setPayments([]);
+    setNotes('');
+    setTerms('');
     setActiveTab('editor');
-    setToastMessage('تم فتح نموذج كشف حساب مشروع جديد');
+    setToastMessage('تم فتح كشف حساب جديد فارغ بالكامل');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -911,85 +889,110 @@ ${remainingText}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {payments.map((p, idx) => (
-                    <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-2.5 px-3 text-center font-mono text-slate-400 font-bold">
-                        {idx + 1}
-                      </td>
-
-                      {/* Date */}
-                      <td className="py-2 px-3">
-                        <input
-                          type="date"
-                          value={p.date}
-                          onChange={(e) => handleUpdatePayment(p.id, 'date', e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-xs text-[#202D3B] focus:border-[#C59A55] outline-none"
-                        />
-                      </td>
-
-                      {/* Statement / Description */}
-                      <td className="py-2 px-3">
-                        <input
-                          type="text"
-                          value={p.statement}
-                          onChange={(e) => handleUpdatePayment(p.id, 'statement', e.target.value)}
-                          placeholder="مثال: دفعة أولى مقدمة عند توقيع العقد"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-[#202D3B] font-semibold focus:border-[#C59A55] outline-none"
-                        />
-                      </td>
-
-                      {/* Payment Method */}
-                      <td className="py-2 px-3">
-                        <select
-                          value={p.paymentMethod}
-                          onChange={(e) => handleUpdatePayment(p.id, 'paymentMethod', e.target.value as PaymentMethod)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-[#202D3B] focus:border-[#C59A55] outline-none"
-                        >
-                          <option value="bank_transfer">تحويل بنكي</option>
-                          <option value="cash">نقدي (كاش)</option>
-                          <option value="card">شبكة / مدى</option>
-                          <option value="cheque">شيك بنكي</option>
-                        </select>
-                      </td>
-
-                      {/* Reference */}
-                      <td className="py-2 px-3">
-                        <input
-                          type="text"
-                          value={p.reference || ''}
-                          onChange={(e) => handleUpdatePayment(p.id, 'reference', e.target.value)}
-                          placeholder="رقم الحوالة"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-xs text-[#202D3B] focus:border-[#C59A55] outline-none"
-                        />
-                      </td>
-
-                      {/* Amount */}
-                      <td className="py-2 px-3">
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={p.amount}
-                            onChange={(e) => handleUpdatePayment(p.id, 'amount', Number(e.target.value) || 0)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-xs font-bold text-emerald-700 focus:border-[#C59A55] outline-none"
-                          />
+                  {payments.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-10 text-center">
+                        <div className="flex flex-col items-center justify-center text-slate-400 space-y-2">
+                          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <Banknote className="w-5 h-5" />
+                          </div>
+                          <p className="font-bold text-xs text-slate-700">لم يتم تسجيل أي دفعات بعد</p>
+                          <p className="text-[11px] text-slate-400 max-w-sm">
+                            يمكنك إضافة دفعات المشروع عند استلامها، أو ترك الكشف لإثبات إجمالي القيمة والمبلغ المتبقي كاملاً.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleAddPayment}
+                            className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white font-bold text-xs transition-colors shadow-2xs"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>إضافة دفعة أولى الآن</span>
+                          </button>
                         </div>
                       </td>
-
-                      {/* Delete */}
-                      <td className="py-2 px-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePayment(p.id)}
-                          className="p-1 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                          title="حذف هذه الدفعة"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    payments.map((p, idx) => (
+                      <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-2.5 px-3 text-center font-mono text-slate-400 font-bold">
+                          {idx + 1}
+                        </td>
+
+                        {/* Date */}
+                        <td className="py-2 px-3">
+                          <input
+                            type="date"
+                            value={p.date}
+                            onChange={(e) => handleUpdatePayment(p.id, 'date', e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-xs text-[#202D3B] focus:border-[#C59A55] outline-none"
+                          />
+                        </td>
+
+                        {/* Statement / Description */}
+                        <td className="py-2 px-3">
+                          <input
+                            type="text"
+                            value={p.statement}
+                            onChange={(e) => handleUpdatePayment(p.id, 'statement', e.target.value)}
+                            placeholder="مثال: دفعة أولى مقدمة عند توقيع العقد"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-[#202D3B] font-semibold focus:border-[#C59A55] outline-none"
+                          />
+                        </td>
+
+                        {/* Payment Method */}
+                        <td className="py-2 px-3">
+                          <select
+                            value={p.paymentMethod}
+                            onChange={(e) => handleUpdatePayment(p.id, 'paymentMethod', e.target.value as PaymentMethod)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-[#202D3B] focus:border-[#C59A55] outline-none"
+                          >
+                            <option value="bank_transfer">تحويل بنكي</option>
+                            <option value="cash">نقدي (كاش)</option>
+                            <option value="card">شبكة / مدى</option>
+                            <option value="cheque">شيك بنكي</option>
+                          </select>
+                        </td>
+
+                        {/* Reference */}
+                        <td className="py-2 px-3">
+                          <input
+                            type="text"
+                            value={p.reference || ''}
+                            onChange={(e) => handleUpdatePayment(p.id, 'reference', e.target.value)}
+                            placeholder="رقم الحوالة"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 font-mono text-xs text-[#202D3B] focus:border-[#C59A55] outline-none"
+                          />
+                        </td>
+
+                        {/* Amount */}
+                        <td className="py-2 px-3">
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={p.amount}
+                              onChange={(e) => handleUpdatePayment(p.id, 'amount', e.target.value === '' ? ('' as any) : Number(e.target.value))}
+                              placeholder="0.00"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-xs font-bold text-emerald-700 focus:border-[#C59A55] outline-none"
+                            />
+                          </div>
+                        </td>
+
+                        {/* Delete */}
+                        <td className="py-2 px-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePayment(p.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="حذف هذه الدفعة"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
 
                 {/* Table Footer with Totals */}
@@ -1299,6 +1302,13 @@ ${remainingText}
                       </td>
                     </tr>
                   ))}
+                  {payments.length === 0 && (
+                    <tr className="bg-slate-50/50 text-slate-500 text-[11px]">
+                      <td colSpan={7} className="py-2.5 px-4 text-center font-medium">
+                        (لم تسجل دفعات مسددة بعد — كامل المبلغ مستحق كقيمة تعاقدية)
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
 
                 {/* Table Footer with Totals */}
