@@ -677,96 +677,37 @@ ${remainingText}
         </div>
       </div>
 
-      {/* KPI Overview Summary (Visible in Editor tab only) */}
+      {/* Accounting Status Bar (Compact, Formal Accounting Standard, No Boxes) */}
       {activeTab === 'editor' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 print:hidden">
-          {/* Card 1: إجمالي قيمة المشروع (مدين) */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div className="bg-slate-50 border border-slate-200/90 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs print:hidden shadow-2xs">
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
             <div>
-              <span className="text-[11px] font-semibold text-slate-500">إجمالي قيمة المشروع (مدين)</span>
-              <div className="text-xl font-bold text-rose-600 mt-0.5 font-mono">
-                {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                <span className="text-[10px] font-normal text-slate-400 me-1 ms-1">ر.س</span>
-              </div>
-              <span className="text-[10px] text-slate-400">
-                {taxType === 'excluded' ? 'شامل الضريبة المضافة 15%' : taxType === 'included' ? 'شاملة الضريبة' : 'القيمة الصافية المتفق عليها'}
+              <span className="text-slate-500 text-[11px] block">إجمالي قيمة المشروع (مدين):</span>
+              <span className="font-mono font-bold text-sm text-rose-600">
+                {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
               </span>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-              <ArrowUp className="w-5 h-5" />
+            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+            <div>
+              <span className="text-slate-500 text-[11px] block">إجمالي المسدد (دائن):</span>
+              <span className="font-mono font-bold text-sm text-emerald-600">
+                {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
+              </span>
+            </div>
+            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+            <div>
+              <span className="text-slate-500 text-[11px] block">صافي الرصيد المتبقي:</span>
+              <span className={`font-mono font-bold text-sm ${calculations.remainingBalance > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                {calculations.remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
+              </span>
+              <span className="text-[10px] text-slate-500 ms-1 font-normal">
+                ({calculations.remainingBalance > 0 ? 'مستحق على العميل' : 'خالص بالكامل'})
+              </span>
             </div>
           </div>
 
-          {/* Card 2: إجمالي المدفوعات المسددة (دائن) */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-semibold text-slate-500">إجمالي المسدد (دائن)</span>
-              <div className="text-xl font-bold text-emerald-600 mt-0.5 font-mono">
-                {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                <span className="text-[10px] font-normal text-slate-400 me-1 ms-1">ر.س</span>
-              </div>
-              <span className="text-[10px] text-slate-400">
-                إجمالي {payments.length} دفعات مستلمة
-              </span>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <ArrowDown className="w-5 h-5" />
-            </div>
-          </div>
-
-          {/* Card 3: الرصيد المتبقي المستحق */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-            <div>
-              <span className="text-[11px] font-semibold text-slate-500">الرصيد المتبقي</span>
-              <div className={`text-xl font-bold mt-0.5 font-mono ${
-                calculations.remainingBalance > 0 
-                  ? 'text-amber-600' 
-                  : calculations.remainingBalance === 0 
-                  ? 'text-emerald-600' 
-                  : 'text-blue-600'
-              }`}>
-                {Math.abs(calculations.remainingBalance).toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                <span className="text-[10px] font-normal text-slate-400 me-1 ms-1">ر.س</span>
-              </div>
-              <span className="text-[10px] font-bold">
-                {calculations.remainingBalance > 0 
-                  ? 'مستحق على العميل' 
-                  : calculations.remainingBalance === 0 
-                  ? 'خالص بالكامل (0.00)' 
-                  : 'رصيد فائض لصالح العميل'}
-              </span>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-[#C59A55]/15 text-[#C59A55] flex items-center justify-center shrink-0">
-              <Scale className="w-5 h-5" />
-            </div>
-          </div>
-
-          {/* Card 4: نسبة الإنجاز المالي والتحصيل */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-slate-500">نسبة التحصيل والسداد</span>
-              <span className="text-xs font-bold font-mono text-[#202D3B]">
-                {calculations.paidPercentage}%
-              </span>
-            </div>
-            
-            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden my-1">
-              <div 
-                className={`h-full transition-all duration-500 ${
-                  calculations.paidPercentage >= 100 
-                    ? 'bg-emerald-500' 
-                    : calculations.paidPercentage >= 50 
-                    ? 'bg-[#C59A55]' 
-                    : 'bg-amber-500'
-                }`}
-                style={{ width: `${calculations.paidPercentage}%` }}
-              />
-            </div>
-
-            <div className="text-[10px] text-slate-400 flex items-center justify-between">
-              <span>مسدد: {calculations.totalPaid.toLocaleString()} ر.س</span>
-              <span>باقي: {Math.max(0, calculations.remainingBalance).toLocaleString()} ر.س</span>
-            </div>
+          <div className="text-[11px] text-slate-500">
+            نسبة السداد: <strong className="font-mono text-[#202D3B] font-bold">%{calculations.paidPercentage}</strong>
           </div>
         </div>
       )}
@@ -1484,126 +1425,54 @@ ${remainingText}
               </div>
             </div>
 
-            {/* Customer & Project Details Card */}
-            <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-4 mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              {/* Right / Start Column: Customer Details */}
-              <div className="space-y-1.5 border-b md:border-b-0 md:border-e border-slate-200/80 pb-3 md:pb-0 md:pe-4">
-                <div className="flex items-center gap-1.5 text-[#C59A55] text-[11px] font-bold">
-                  <User className="w-3.5 h-3.5" />
-                  <span>الطرف الثاني / العميل:</span>
-                </div>
-                <div className="text-sm font-bold text-[#202D3B]">
-                  {customerName || 'عميل نقدي'}
-                </div>
-                {customerPhone && (
-                  <div className="text-slate-500 font-mono text-[11px]">
-                    <span>رقم الهاتف: </span>
-                    <span className="font-bold text-slate-700">{customerPhone}</span>
-                  </div>
-                )}
-                {customerTaxNumber && (
-                  <div className="text-slate-500 font-mono text-[11px]">
-                    <span>الرقم الضريبي للعميل: </span>
-                    <span className="font-bold text-slate-700">{customerTaxNumber}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Left / End Column: Project & Contract Details */}
-              <div className="space-y-1.5 md:ps-2">
-                <div className="flex items-center gap-1.5 text-[#C59A55] text-[11px] font-bold">
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>بيانات المشروع والتعاقد:</span>
-                </div>
-                <div className="text-sm font-bold text-[#202D3B] flex items-center gap-2 flex-wrap">
-                  <span>{displayProjectName}</span>
-                  {projectCode && (
-                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-200/80 text-slate-700 font-semibold">
-                      [{projectCode}]
-                    </span>
-                  )}
-                </div>
-                <div className="text-slate-500 text-[11px] flex items-center gap-3">
-                  <span>نوع الضريبة: <strong className="text-slate-700 font-semibold">{taxType === 'excluded' ? 'قيمة غير شاملة + 15% ضريبة' : taxType === 'included' ? 'قيمة شاملة ضريبة 15%' : 'صافي معفى / متفق عليه'}</strong></span>
-                </div>
-                <div className="text-slate-500 text-[11px]">
-                  <span>حالة الحساب التعاقدي: </span>
-                  <span className={`font-bold ${calculations.remainingBalance > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
-                    {calculations.remainingBalance > 0 ? 'جاري السداد (متبقي مستحقات)' : 'مسدد بالكامل وخالص'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Integrated Executive Financial Summary Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 border border-[#202D3B]/20 rounded-xl overflow-hidden mb-6 bg-white divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-slate-200 text-center">
-              {/* Box 1: Total Project Contract */}
-              <div className="p-3 bg-slate-50/50">
-                <span className="text-[10px] text-slate-500 font-bold block mb-1">
-                  إجمالي قيمة المشروع (مدين)
-                </span>
-                <div className="font-mono text-base font-bold text-rose-600 whitespace-nowrap">
-                  {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  <span className="text-[10px] font-sans font-normal text-slate-500 ms-1">ر.س</span>
-                </div>
-                <span className="text-[9px] text-slate-400 block mt-0.5">
-                  {taxType === 'excluded' ? 'شامل الضريبة 15%' : taxType === 'included' ? 'شاملة الضريبة' : 'صافي متفق عليه'}
-                </span>
-              </div>
-
-              {/* Box 2: Total Payments Received */}
-              <div className="p-3 bg-slate-50/50">
-                <span className="text-[10px] text-slate-500 font-bold block mb-1">
-                  إجمالي المسدد (دائن)
-                </span>
-                <div className="font-mono text-base font-bold text-emerald-600 whitespace-nowrap">
-                  {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  <span className="text-[10px] font-sans font-normal text-slate-500 ms-1">ر.س</span>
-                </div>
-                <span className="text-[9px] text-slate-400 block mt-0.5">
-                  إجمالي {payments.length} دفعات مستلمة
-                </span>
-              </div>
-
-              {/* Box 3: Remaining Balance */}
-              <div className={`p-3 ${calculations.remainingBalance > 0 ? 'bg-amber-50/40' : 'bg-emerald-50/30'}`}>
-                <span className="text-[10px] text-slate-500 font-bold block mb-1">
-                  صافي الرصيد المتبقي
-                </span>
-                <div className={`font-mono text-base font-bold whitespace-nowrap ${calculations.remainingBalance > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
-                  {calculations.remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  <span className="text-[10px] font-sans font-normal text-slate-500 ms-1">ر.س</span>
-                </div>
-                <span className="text-[9px] font-bold text-slate-600 block mt-0.5">
-                  {calculations.remainingBalance > 0 
-                    ? 'مستحق على العميل' 
-                    : calculations.remainingBalance === 0 
-                    ? 'خالص ومسدد بالكامل' 
-                    : 'رصيد دائن للعميل'}
-                </span>
-              </div>
-
-              {/* Box 4: Financial Progress */}
-              <div className="p-3 bg-slate-50/50">
-                <span className="text-[10px] text-slate-500 font-bold block mb-1">
-                  نسبة التحصيل والسداد
-                </span>
-                <div className="font-mono text-base font-bold text-[#202D3B]">
-                  %{calculations.paidPercentage}
-                </div>
-                <div className="w-24 bg-slate-200 h-1.5 rounded-full mx-auto mt-1 overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-300 ${
-                      calculations.paidPercentage >= 100 
-                        ? 'bg-emerald-500' 
-                        : calculations.paidPercentage >= 50 
-                        ? 'bg-[#C59A55]' 
-                        : 'bg-amber-500'
-                    }`}
-                    style={{ width: `${Math.min(100, calculations.paidPercentage)}%` }}
-                  />
-                </div>
-              </div>
+            {/* Account & Project Information Table (Standard Accounting ERP Format - No Boxes) */}
+            <div className="overflow-hidden rounded-lg border border-slate-300 mb-6 text-xs">
+              <table className="w-full text-right border-collapse">
+                <tbody>
+                  <tr className="border-b border-slate-200">
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 w-36 border-e border-slate-200">
+                      العميل / الطرف الثاني:
+                    </td>
+                    <td className="py-2.5 px-3 font-bold text-[#202D3B] text-sm border-e border-slate-200">
+                      {customerName || 'عميل نقدي'}
+                    </td>
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 w-36 border-e border-slate-200">
+                      رقم العقد / المرجع:
+                    </td>
+                    <td className="py-2.5 px-3 font-mono font-bold text-[#202D3B]">
+                      {projectCode || 'PRJ-2026443'}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-slate-200">
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200">
+                      المشروع / البيان:
+                    </td>
+                    <td className="py-2.5 px-3 font-bold text-[#202D3B] border-e border-slate-200">
+                      {displayProjectName}
+                    </td>
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200">
+                      تاريخ بدء المشروع:
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-slate-700">
+                      {formatDate(startDate)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200">
+                      الرقم الضريبي للعميل:
+                    </td>
+                    <td className="py-2.5 px-3 font-mono font-bold text-[#202D3B] border-e border-slate-200">
+                      {customerTaxNumber || 'غير مسجل'}
+                    </td>
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200">
+                      العملة المعتمدة:
+                    </td>
+                    <td className="py-2.5 px-3 font-bold text-[#202D3B]">
+                      ريال سعودي (SAR)
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             {/* Movements & Payments Table */}
