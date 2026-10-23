@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, Suspense, useEffect } from 'react';
+import React, { useState, Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { 
   Settings, Building2, CreditCard, FileText, 
   Users, Save, CheckCircle2, RotateCcw, Trash2, 
   ShieldCheck, Sparkles, Plus, Sun, Moon, 
-  Check, AlertCircle, Building, Layers, Edit3
+  Check, AlertCircle, Building, Layers, Edit3,
+  Upload, ImageIcon
 } from 'lucide-react';
 import { useZajelStore } from '@/store/zajelStore';
 import { ZajelLogo } from '@/components/shared/ZajelLogo';
@@ -25,6 +26,7 @@ function SettingsContent() {
     setActiveCompany, 
     addCompany, 
     deleteCompany, 
+    updateCompany,
     themeMode, 
     setThemeMode, 
     resetToDemoData, 
@@ -69,6 +71,47 @@ function SettingsContent() {
     quotationTerms: 'العرض سارٍ لمدة 15 يوماً من تاريخ الإصدار.',
     invoiceTerms: 'يرجى سداد المبلغ المستحق خلال 14 يوماً من تاريخ الفاتورة.',
   });
+
+  const companyLogoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCompanyLogoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert('حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 3 ميجابايت.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setFormData((prev) => ({ ...prev, logoUrl: base64 }));
+      if (activeCompanyId) {
+        updateCompany(activeCompanyId, { logoUrl: base64 });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const newCompanyLogoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleNewCompanyLogoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert('حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 3 ميجابايت.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setNewCompany((prev) => ({ ...prev, logoUrl: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleChange = (field: string, val: any) => {
     setFormData((prev) => ({ ...prev, [field]: val }));
@@ -375,6 +418,49 @@ function SettingsContent() {
                           />
                         </div>
 
+                        <div className="sm:col-span-2">
+                          <label className="block text-slate-700 font-bold mb-1">شعار المنشأة (اختياري)</label>
+                          <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                            {newCompany.logoUrl ? (
+                              <div className="relative group shrink-0">
+                                <img
+                                  src={newCompany.logoUrl}
+                                  alt="Preview"
+                                  className="w-12 h-12 object-contain rounded-lg border border-slate-200 bg-white p-1"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setNewCompany((prev) => ({ ...prev, logoUrl: '' }))}
+                                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-xs"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg border border-dashed border-slate-300 flex items-center justify-center text-slate-400 bg-white shrink-0">
+                                <ImageIcon className="w-5 h-5 text-slate-300" />
+                              </div>
+                            )}
+
+                            <div className="flex-1">
+                              <input
+                                ref={newCompanyLogoInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleNewCompanyLogoFileSelect}
+                                className="hidden"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => newCompanyLogoInputRef.current?.click()}
+                                className="px-3 py-1.5 rounded-lg bg-[#C59A55] text-white font-bold text-xs hover:bg-[#B38944] transition-colors"
+                              >
+                                {newCompany.logoUrl ? 'تغيير الشعار' : 'رفع شعار من جهازك'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
                         <div>
                           <label className="block text-slate-700 font-bold mb-1">الرقم الضريبي</label>
                           <input
@@ -521,10 +607,18 @@ function SettingsContent() {
           {activeTab === 'company' && (
             <form onSubmit={handleSave} className="space-y-5 text-xs">
               <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                <ZajelLogo variant="light" size="lg" />
+                {formData.logoUrl ? (
+                  <img src={formData.logoUrl} alt={formData.name} className="w-16 h-16 object-contain rounded-xl border border-slate-200 bg-white p-1" />
+                ) : formData.name?.includes('زاجل') ? (
+                  <ZajelLogo variant="light" size="lg" showText={false} />
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-[#C59A55]/15 border-2 border-[#C59A55] text-[#C59A55] flex items-center justify-center font-bold text-sm shrink-0">
+                    <Building2 className="w-7 h-7" />
+                  </div>
+                )}
                 <div>
                   <h3 className="font-bold text-sm text-[#202D3B]">بيانات المنشأة الحالية ({formData.name})</h3>
-                  <p className="text-slate-500 text-[11px]">هذه البيانات تظهر تلقائياً على كافة نماذج الطباعة والفواتير الرسمية</p>
+                  <p className="text-slate-500 text-[11px]">هذه البيانات تظهر تلقائياً على كافة نماذج الطباعة والفواتير وكشوفات الحساب الرسمية</p>
                 </div>
               </div>
 
@@ -539,14 +633,70 @@ function SettingsContent() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-slate-700 font-bold mb-1">رابط الشعار (Logo URL)</label>
-                  <input
-                    type="text"
-                    value={formData.logoUrl}
-                    onChange={(e) => handleChange('logoUrl', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-                  />
+                <div className="sm:col-span-2">
+                  <label className="block text-slate-700 font-bold mb-1.5">شعار المنشأة (Logo)</label>
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
+                    {formData.logoUrl ? (
+                      <div className="relative group shrink-0">
+                        <img
+                          src={formData.logoUrl}
+                          alt="Logo preview"
+                          className="w-20 h-20 object-contain rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleChange('logoUrl', '')}
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center text-xs shadow-md transition-transform hover:scale-110"
+                          title="إزالة الشعار"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 bg-white shrink-0">
+                        <ImageIcon className="w-6 h-6 mb-1 text-slate-300" />
+                        <span className="text-[10px]">بدون شعار</span>
+                      </div>
+                    )}
+
+                    <div className="flex-1 space-y-2 text-right w-full">
+                      <input
+                        ref={companyLogoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCompanyLogoFileSelect}
+                        className="hidden"
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => companyLogoInputRef.current?.click()}
+                          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white font-bold text-xs transition-colors shadow-2xs"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>اختيار صورة الشعار من جهازك</span>
+                        </button>
+
+                        {formData.logoUrl && (
+                          <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>تم تحديد الشعار</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <span className="text-[10px] text-slate-400 shrink-0">أو رابط إلكتروني:</span>
+                        <input
+                          type="text"
+                          value={formData.logoUrl || ''}
+                          onChange={(e) => handleChange('logoUrl', e.target.value)}
+                          placeholder="https://... أو /logo.png"
+                          className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] outline-none focus:border-[#C59A55] bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>

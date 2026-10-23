@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, Suspense, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
@@ -8,12 +8,14 @@ import {
   FileSpreadsheet, ArrowRight, ArrowUp, ArrowDown, 
   Scale, CheckCircle2, AlertCircle, Building2, User, 
   Phone, Calendar, Edit3, History, Check, RefreshCw, 
-  CreditCard, Banknote, Sparkles, FileText, ChevronRight
+  CreditCard, Banknote, Sparkles, FileText, ChevronRight,
+  Upload, ImageIcon
 } from 'lucide-react';
 import { useZajelStore } from '@/store/zajelStore';
 import { ZajelLogo } from '@/components/shared/ZajelLogo';
+import { EditCompanyModal } from '@/components/shared/EditCompanyModal';
 import { formatDate, tafqeetArabic, formatCurrency } from '@/lib/zajelUtils';
-import { PaymentMethod, ProjectPayment, QuickProjectStatement } from '@/types/zajel';
+import { PaymentMethod, ProjectPayment, QuickProjectStatement, Company } from '@/types/zajel';
 
 function QuickStatementContent() {
   const router = useRouter();
@@ -21,6 +23,10 @@ function QuickStatementContent() {
   const { 
     customers, 
     settings, 
+    companies,
+    activeCompanyId,
+    setActiveCompany,
+    updateCompany,
     getActiveCompany, 
     quickStatements, 
     addQuickStatement, 
@@ -28,7 +34,37 @@ function QuickStatementContent() {
     deleteQuickStatement 
   } = useZajelStore();
 
-  const activeCompany = getActiveCompany() || settings;
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(activeCompanyId || companies?.[0]?.id || '');
+  const [editingModalCompany, setEditingModalCompany] = useState<Company | null>(null);
+
+  // Sync selectedCompanyId when activeCompanyId changes
+  useEffect(() => {
+    if (activeCompanyId) setSelectedCompanyId(activeCompanyId);
+  }, [activeCompanyId]);
+
+  const activeCompany = (companies || []).find(c => c.id === selectedCompanyId) || getActiveCompany() || settings;
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleStatementLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert('حجم الصورة كبير، يرجى اختيار صورة أقل من 3 ميجابايت.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      if (activeCompany?.id) {
+        updateCompany(activeCompany.id, { logoUrl: base64 });
+        setToastMessage(`تم حفظ وتحديث شعار منشأة «${activeCompany.name}» بنجاح!`);
+        setTimeout(() => setToastMessage(null), 3500);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // View state: 'editor' | 'preview' | 'history'
   const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'history'>('editor');
@@ -557,6 +593,93 @@ ${remainingText}
       {activeTab === 'editor' && (
         <div className="space-y-6 print:hidden">
 
+          {/* Section 0: Issuing Company & Logo */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-[#C59A55]" />
+                <h2 className="text-sm font-bold text-[#202D3B]">المنشأة المصدرة لكشف الحساب</h2>
+              </div>
+              <span className="text-[11px] text-slate-500">
+                اختر المنشأة المصدرة ليظهر اسمها وشعارها وسجلها التجاري والضريبي ورقم هاتفها في ترويسة الكشف
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+              {/* Select Company Dropdown */}
+              <div className="md:col-span-5 space-y-1.5">
+                <label className="font-bold text-slate-700 text-xs block">
+                  اختيار المؤسسة / المنشأة:
+                </label>
+                <select
+                  value={selectedCompanyId}
+                  onChange={(e) => {
+                    setSelectedCompanyId(e.target.value);
+                    setActiveCompany(e.target.value);
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-[#202D3B] font-bold focus:border-[#C59A55] outline-none shadow-2xs"
+                >
+                  {(companies || []).map((comp) => (
+                    <option key={comp.id} value={comp.id}>
+                      {comp.name} {comp.crNumber ? `(س.ت: ${comp.crNumber})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setEditingModalCompany(activeCompany as Company)}
+                    className="flex items-center gap-1 text-[11px] font-bold text-[#C59A55] hover:underline"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>تعديل بيانات «{activeCompany.name}»</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Company Logo and Upload */}
+              <div className="md:col-span-7 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  {activeCompany.logoUrl ? (
+                    <img
+                      src={activeCompany.logoUrl}
+                      alt={activeCompany.name}
+                      className="w-14 h-14 object-contain rounded-xl border border-slate-200 bg-white p-1 shrink-0 shadow-2xs"
+                    />
+                  ) : activeCompany.name?.includes('زاجل') ? (
+                    <ZajelLogo variant="light" size="sm" showText={false} />
+                  ) : (
+                    <div className="w-14 h-14 rounded-xl border-2 border-dashed border-[#C59A55]/40 bg-amber-50/30 flex flex-col items-center justify-center text-[#C59A55] shrink-0">
+                      <Building2 className="w-5 h-5 mb-0.5" />
+                      <span className="text-[9px] font-bold">بدون شعار</span>
+                    </div>
+                  )}
+
+                  <div>
+                    <h4 className="font-bold text-xs text-[#202D3B]">{activeCompany.name}</h4>
+                    <p className="text-[11px] text-slate-500 font-mono">
+                      {activeCompany.crNumber ? `سجل: ${activeCompany.crNumber}` : ''} {activeCompany.taxNumber ? `| ضريبة: ${activeCompany.taxNumber}` : ''}
+                    </p>
+                    <span className="text-[10px] text-emerald-600 font-medium block">
+                      {activeCompany.logoUrl ? '✓ تم إدراج الشعار وسيطبع في الكشف' : '⚠️ لم يتم رفع شعار لهذه المنشأة بعد'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="shrink-0 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => logoFileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white font-bold text-xs transition-colors shadow-2xs"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{activeCompany.logoUrl ? 'تغيير الشعار' : 'رفع الشعار الآن'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Section 1: Customer Information */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -942,13 +1065,53 @@ ${remainingText}
           
           {/* Action Toolbar on Preview */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 print:hidden">
-            <button
-              onClick={() => setActiveTab('editor')}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-all"
-            >
-              <ArrowRight className="w-4 h-4" />
-              <span>العودة لتعديل البيانات والدفعات</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setActiveTab('editor')}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-all"
+              >
+                <ArrowRight className="w-4 h-4" />
+                <span>العودة لتعديل البيانات والدفعات</span>
+              </button>
+
+              {/* Institution Quick Switcher on Preview */}
+              <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
+                <Building2 className="w-4 h-4 text-[#C59A55]" />
+                <span className="text-slate-500 font-bold hidden sm:inline">المنشأة المصدرة:</span>
+                <select
+                  value={selectedCompanyId}
+                  onChange={(e) => {
+                    setSelectedCompanyId(e.target.value);
+                    setActiveCompany(e.target.value);
+                  }}
+                  className="bg-transparent font-bold text-[#202D3B] outline-none cursor-pointer py-0.5"
+                >
+                  {(companies || []).map((comp) => (
+                    <option key={comp.id} value={comp.id}>
+                      {comp.name}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => logoFileInputRef.current?.click()}
+                  className="p-1 rounded-lg hover:bg-white text-[#C59A55] transition-colors"
+                  title="رفع أو تغيير شعار المنشأة مباشرة"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditingModalCompany(activeCompany as Company)}
+                  className="p-1 rounded-lg hover:bg-white text-slate-600 hover:text-[#C59A55] transition-colors"
+                  title="تعديل بيانات المنشأة بالكامل"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
 
             <div className="flex items-center gap-2">
               <button
@@ -1017,17 +1180,73 @@ ${remainingText}
                 </div>
               </div>
 
-              {/* Company Logo and Info */}
-              <div className="text-left flex flex-col items-end">
+              {/* Company Logo and Official Info (Isolated Company Branding) */}
+              <div className="flex flex-col items-end text-end max-w-[50%]">
+                {/* Logo or Brand Emblem */}
                 {activeCompany?.logoUrl ? (
-                  <img src={activeCompany.logoUrl} alt={activeCompany.name} className="h-16 w-auto object-contain mb-2" />
+                  <div className="relative group mb-2">
+                    <img 
+                      src={activeCompany.logoUrl} 
+                      alt={activeCompany.name} 
+                      className="h-20 w-auto max-w-[220px] object-contain rounded-lg" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => logoFileInputRef.current?.click()}
+                      className="absolute inset-0 bg-slate-900/60 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold gap-1 print:hidden cursor-pointer"
+                    >
+                      <Upload className="w-3 h-3" />
+                      <span>تغيير الشعار</span>
+                    </button>
+                  </div>
+                ) : (activeCompany?.name || '').toLowerCase().includes('زاجل') || (activeCompany?.name || '').toLowerCase().includes('zajel') ? (
+                  <ZajelLogo variant="light" size="md" showText={false} />
                 ) : (
-                  <ZajelLogo variant="light" size="md" />
+                  <div 
+                    onClick={() => logoFileInputRef.current?.click()}
+                    className="w-16 h-16 rounded-2xl border-2 border-dashed border-[#C59A55]/40 bg-[#C59A55]/5 flex flex-col items-center justify-center text-[#C59A55] mb-2 cursor-pointer hover:bg-[#C59A55]/10 transition-colors print:border-solid print:border-[#202D3B]/20 print:bg-slate-50 group"
+                    title="انقر لرفع شعار المنشأة"
+                  >
+                    <Building2 className="w-7 h-7 text-[#C59A55]" />
+                    <span className="text-[9px] font-bold mt-1 text-[#202D3B] group-hover:text-[#C59A55] print:hidden">
+                      + أضف الشعار
+                    </span>
+                  </div>
                 )}
-                <div className="mt-2 text-xs text-slate-500 space-y-0.5 text-left" dir="ltr">
-                  <p className="font-bold text-[#202D3B] text-sm">{activeCompany.name}</p>
-                  {activeCompany.crNumber && <p>CR: {activeCompany.crNumber} {activeCompany.taxNumber ? `| VAT: ${activeCompany.taxNumber}` : ''}</p>}
-                  <p>{activeCompany.phone} | {activeCompany.city || 'المملكة العربية السعودية'}</p>
+
+                {/* Institution Details */}
+                <div className="mt-1 text-xs text-slate-600 space-y-0.5 text-end" dir="rtl">
+                  <h2 className="font-bold text-[#202D3B] text-base leading-tight">
+                    {activeCompany.name}
+                  </h2>
+                  {activeCompany.crNumber && (
+                    <p className="text-[11px] text-slate-500">
+                      <span>س.ت: </span>
+                      <span className="font-mono font-bold text-[#202D3B]">{activeCompany.crNumber}</span>
+                      {activeCompany.taxNumber && (
+                        <>
+                          <span className="mx-1.5 text-slate-300">|</span>
+                          <span>الرقم الضريبي: </span>
+                          <span className="font-mono font-bold text-[#202D3B]">{activeCompany.taxNumber}</span>
+                        </>
+                      )}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-slate-500">
+                    {activeCompany.phone && (
+                      <>
+                        <span className="font-mono">{activeCompany.phone}</span>
+                        {activeCompany.city && <span className="mx-1.5 text-slate-300">|</span>}
+                      </>
+                    )}
+                    <span>{activeCompany.city || 'المملكة العربية السعودية'}</span>
+                  </p>
+                  {activeCompany.bankName && activeCompany.iban && (
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      <span>{activeCompany.bankName}: </span>
+                      <span>{activeCompany.iban}</span>
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1281,6 +1500,28 @@ ${remainingText}
             </div>
           )}
         </div>
+      )}
+
+      {/* Hidden universal file input for logo uploads from Editor or Preview */}
+      <input
+        ref={logoFileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleStatementLogoUpload}
+        className="hidden"
+      />
+
+      {/* Edit Company Modal */}
+      {editingModalCompany && (
+        <EditCompanyModal
+          isOpen={!!editingModalCompany}
+          company={editingModalCompany}
+          onClose={() => setEditingModalCompany(null)}
+          onSuccess={(msg) => {
+            setToastMessage(msg);
+            setTimeout(() => setToastMessage(null), 3500);
+          }}
+        />
       )}
 
     </div>

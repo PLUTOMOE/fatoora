@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Building2, Save, X, Sparkles, Building, Phone, 
   MapPin, Hash, CheckCircle2, CreditCard, FileText, 
-  ImageIcon, Upload, Layers
+  ImageIcon, Upload, Layers, Trash2 
 } from 'lucide-react';
 import { useZajelStore } from '@/store/zajelStore';
 import { Company } from '@/types/zajel';
@@ -55,8 +55,27 @@ export function EditCompanyModal({ isOpen, company, onClose, onSuccess }: EditCo
 
   if (!isOpen || !company) return null;
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleChange = (field: keyof Company, val: any) => {
     setFormData((prev) => ({ ...prev, [field]: val }));
+  };
+
+  const handleLogoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert('حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 3 ميجابايت.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setFormData((prev) => ({ ...prev, logoUrl: base64 }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -210,26 +229,72 @@ export function EditCompanyModal({ isOpen, company, onClose, onSuccess }: EditCo
               </div>
 
               <div>
-                <label className="block text-slate-700 font-bold mb-1">رابط شعار المؤسسة (Logo URL)</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={formData.logoUrl || ''}
-                    onChange={(e) => handleChange('logoUrl', e.target.value)}
-                    placeholder="https://... أو /logo.png"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#C59A55]"
-                  />
-                  {formData.logoUrl && (
-                    <img
-                      src={formData.logoUrl}
-                      alt="Logo preview"
-                      className="w-9 h-9 object-contain rounded-xl border border-slate-200 p-0.5 shrink-0 bg-white"
-                    />
+                <label className="block text-slate-700 font-bold mb-1.5">شعار المؤسسة (Logo)</label>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
+                  {formData.logoUrl ? (
+                    <div className="relative group shrink-0">
+                      <img
+                        src={formData.logoUrl}
+                        alt="Logo preview"
+                        className="w-20 h-20 object-contain rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, logoUrl: '' }))}
+                        className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center text-xs shadow-md transition-transform hover:scale-110"
+                        title="إزالة الشعار"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 bg-white shrink-0">
+                      <ImageIcon className="w-6 h-6 mb-1 text-slate-300" />
+                      <span className="text-[10px]">بدون شعار</span>
+                    </div>
                   )}
+
+                  <div className="flex-1 space-y-2 text-right w-full">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoFileSelect}
+                      className="hidden"
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white font-bold text-xs transition-colors shadow-2xs"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>اختيار صورة الشعار من جهازك</span>
+                      </button>
+
+                      {formData.logoUrl && (
+                        <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>تم تحديد الشعار</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[10px] text-slate-400 shrink-0">أو رابط إنترنت:</span>
+                      <input
+                        type="text"
+                        value={formData.logoUrl || ''}
+                        onChange={(e) => handleChange('logoUrl', e.target.value)}
+                        placeholder="https://... أو /logo.png"
+                        className="flex-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] outline-none focus:border-[#C59A55] bg-white"
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 block">
+                      يظهر الشعار في أعلى كشوفات الحساب والفواتير وعروض الأسعار الرسمية.
+                    </span>
+                  </div>
                 </div>
-                <span className="text-[10px] text-slate-400 mt-1 block">
-                  يظهر الشعار في أعلى الفواتير وعروض الأسعار وكشوفات الحساب
-                </span>
               </div>
             </div>
           )}
