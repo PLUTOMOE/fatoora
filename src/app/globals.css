@@ -148,10 +148,11 @@ button, a, input, select { transition: all 0.12s ease; }
   }
 
   /* Reset layout */
-  body {
+  html, body {
     background: white !important;
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
@@ -170,6 +171,23 @@ button, a, input, select { transition: all 0.12s ease; }
     margin: 0 !important;
     padding: 0 !important;
     max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Dedicated styles for printable statement */
+  .printable-statement {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .printable-statement table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
   }
 
   /* The template container */
@@ -182,10 +200,6 @@ button, a, input, select { transition: all 0.12s ease; }
   /* Remove shadows and borders for clean print */
   .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl {
     box-shadow: none !important;
-  }
-
-  .rounded-xl, .rounded-lg, .overflow-hidden {
-    border-radius: 0 !important;
   }
 
   /* Ensure backgrounds print */
@@ -208,7 +222,7 @@ button, a, input, select { transition: all 0.12s ease; }
 
   @page {
     size: A4 portrait;
-    margin: 10mm 8mm;
+    margin: 8mm 6mm;
   }
 }
 

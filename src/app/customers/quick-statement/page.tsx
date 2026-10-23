@@ -549,7 +549,7 @@ ${remainingText}
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12" dir="rtl">
+    <div className="space-y-6 max-w-5xl mx-auto pb-12 print:space-y-0 print:max-w-none print:w-full print:m-0 print:p-0" dir="rtl">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -1357,7 +1357,7 @@ ${remainingText}
           TAB 2: PRINTABLE A4 STATEMENT PREVIEW
          ========================================================================= */}
       {activeTab === 'preview' && (
-        <div className="space-y-4">
+        <div className="space-y-4 print:space-y-0 print:w-full print:m-0 print:p-0">
           
           {/* Action Toolbar on Preview */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 print:hidden">
@@ -1447,7 +1447,7 @@ ${remainingText}
           </div>
 
           {/* Formal Printable Sheet (Executive Corporate Standard) */}
-          <div className="bg-white p-6 sm:p-10 rounded-2xl border border-slate-200/90 shadow-sm print:p-0 print:border-none print:shadow-none print:rounded-none max-w-4xl mx-auto">
+          <div className="printable-statement bg-white p-6 sm:p-10 rounded-2xl border border-slate-200/90 shadow-sm print:p-0 print:border-none print:shadow-none print:rounded-none max-w-4xl print:max-w-none print:w-full print:m-0 mx-auto">
             
             {/* Top Royal Accent Line */}
             <div className="h-1.5 w-full bg-gradient-to-r from-[#202D3B] via-[#C59A55] to-[#202D3B] rounded-full mb-6 print:mb-4" />
@@ -1545,48 +1545,54 @@ ${remainingText}
             </div>
 
             {/* Account & Project Information Table (Standard Accounting ERP Format - No Boxes) */}
-            <div className="overflow-hidden rounded-lg border border-slate-300 mb-6 text-xs">
-              <table className="w-full text-right border-collapse">
+            <div className="overflow-hidden rounded-lg border border-slate-300 mb-6 text-xs w-full">
+              <table className="w-full text-right border-collapse table-fixed">
+                <colgroup>
+                  <col className="w-[18%]" />
+                  <col className="w-[32%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[32%]" />
+                </colgroup>
                 <tbody>
                   <tr className="border-b border-slate-200">
-                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 w-36 border-e border-slate-200">
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate">
                       العميل / الطرف الثاني:
                     </td>
-                    <td className="py-2.5 px-3 font-bold text-[#202D3B] text-sm border-e border-slate-200">
+                    <td className="py-2.5 px-3 font-bold text-[#202D3B] text-xs sm:text-sm border-e border-slate-200 truncate">
                       {customerName || 'عميل نقدي'}
                     </td>
-                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 w-36 border-e border-slate-200">
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate">
                       رقم العقد / المرجع:
                     </td>
-                    <td className="py-2.5 px-3 font-mono font-bold text-[#202D3B]">
+                    <td className="py-2.5 px-3 font-mono font-bold text-[#202D3B] truncate">
                       {projectCode || 'PRJ-2026443'}
                     </td>
                   </tr>
                   <tr className="border-b border-slate-200">
-                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200">
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate">
                       المشروع / البيان:
                     </td>
-                    <td className="py-2.5 px-3 font-bold text-[#202D3B] border-e border-slate-200">
+                    <td className="py-2.5 px-3 font-bold text-[#202D3B] border-e border-slate-200 truncate">
                       {displayProjectName}
                     </td>
-                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200">
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate">
                       تاريخ بدء المشروع:
                     </td>
-                    <td className="py-2.5 px-3 font-mono text-slate-700">
+                    <td className="py-2.5 px-3 font-mono text-slate-700 truncate">
                       {formatDate(startDate)}
                     </td>
                   </tr>
                   <tr>
-                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200">
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate">
                       الرقم الضريبي للعميل:
                     </td>
-                    <td className="py-2.5 px-3 font-mono font-bold text-[#202D3B] border-e border-slate-200">
+                    <td className="py-2.5 px-3 font-mono font-bold text-[#202D3B] border-e border-slate-200 truncate">
                       {customerTaxNumber || 'غير مسجل'}
                     </td>
-                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200">
+                    <td className="py-2.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate">
                       العملة المعتمدة:
                     </td>
-                    <td className="py-2.5 px-3 font-bold text-[#202D3B]">
+                    <td className="py-2.5 px-3 font-bold text-[#202D3B] truncate">
                       ريال سعودي (SAR)
                     </td>
                   </tr>
@@ -1595,17 +1601,26 @@ ${remainingText}
             </div>
 
             {/* Movements & Payments Table */}
-            <div className="overflow-hidden rounded-xl border border-slate-200 mb-6">
-              <table className="w-full text-right text-xs">
+            <div className="overflow-hidden rounded-xl border border-slate-200 mb-6 w-full">
+              <table className="w-full text-right text-xs table-fixed border-collapse">
+                <colgroup>
+                  <col className="w-[5%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[27%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[14%]" />
+                </colgroup>
                 <thead className="bg-[#202D3B] text-white font-bold">
                   <tr>
-                    <th className="py-3 px-3 w-10 text-center">م</th>
-                    <th className="py-3 px-3 w-28 text-center whitespace-nowrap">التاريخ</th>
-                    <th className="py-3 px-3 w-32 text-center whitespace-nowrap">رقم المرجع</th>
-                    <th className="py-3 px-4 min-w-[220px]">البيان والحركة</th>
-                    <th className="py-3 px-3 w-32 text-center whitespace-nowrap">مدين (ر.س)</th>
-                    <th className="py-3 px-3 w-32 text-center whitespace-nowrap">دائن (ر.س)</th>
-                    <th className="py-3 px-3 w-36 text-start whitespace-nowrap">الرصيد المتبقي (ر.س)</th>
+                    <th className="py-2.5 px-1 text-center">م</th>
+                    <th className="py-2.5 px-1 text-center whitespace-nowrap">التاريخ</th>
+                    <th className="py-2.5 px-1 text-center whitespace-nowrap">رقم المرجع</th>
+                    <th className="py-2.5 px-3 text-start">البيان والحركة</th>
+                    <th className="py-2.5 px-1 text-center whitespace-nowrap">مدين (ر.س)</th>
+                    <th className="py-2.5 px-1 text-center whitespace-nowrap">دائن (ر.س)</th>
+                    <th className="py-2.5 px-1 text-center whitespace-nowrap">الرصيد المتبقي (ر.س)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -1614,30 +1629,30 @@ ${remainingText}
                       key={row.id} 
                       className={`transition-colors ${row.id === 'initial-contract' ? 'bg-slate-50/70 font-semibold' : 'hover:bg-slate-50/50'}`}
                     >
-                      <td className="py-3 px-3 text-center font-mono text-slate-400">
+                      <td className="py-2.5 px-1 text-center font-mono text-slate-400">
                         {row.seq}
                       </td>
-                      <td className="py-3 px-3 text-center font-mono text-slate-600 whitespace-nowrap">
+                      <td className="py-2.5 px-1 text-center font-mono text-slate-600 whitespace-nowrap print:text-[11px]">
                         {formatDate(row.date)}
                       </td>
-                      <td className="py-3 px-3 text-center font-mono font-bold text-[#202D3B] whitespace-nowrap">
+                      <td className="py-2.5 px-1 text-center font-mono font-bold text-[#202D3B] whitespace-nowrap print:text-[11px]">
                         {row.reference}
                       </td>
-                      <td className="py-3 px-4 text-slate-800">
-                        <span className="font-bold block leading-relaxed">{row.statement}</span>
+                      <td className="py-2.5 px-3 text-slate-800">
+                        <span className="font-bold block leading-relaxed print:text-[11px]">{row.statement}</span>
                         {row.paymentMethodLabel && (
-                          <span className="text-[10px] text-slate-400 block font-normal mt-0.5">
+                          <span className="text-[10px] text-slate-400 block font-normal mt-0.5 print:text-[9px]">
                             طريقة التعامل: {row.paymentMethodLabel}
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-center font-mono font-bold text-rose-600 whitespace-nowrap">
+                      <td className="py-2.5 px-1 text-center font-mono font-bold text-rose-600 whitespace-nowrap tabular-nums print:text-[11px]">
                         {row.debit > 0 ? row.debit.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}
                       </td>
-                      <td className="py-3 px-3 text-center font-mono font-bold text-emerald-600 whitespace-nowrap">
+                      <td className="py-2.5 px-1 text-center font-mono font-bold text-emerald-600 whitespace-nowrap tabular-nums print:text-[11px]">
                         {row.credit > 0 ? row.credit.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}
                       </td>
-                      <td className="py-3 px-3 text-start font-mono font-bold text-[#202D3B] whitespace-nowrap">
+                      <td className="py-2.5 px-1 text-center font-mono font-bold text-[#202D3B] whitespace-nowrap tabular-nums print:text-[11px]">
                         {row.runningBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -1651,20 +1666,20 @@ ${remainingText}
                   )}
                 </tbody>
 
-                {/* Table Footer with Totals - Fixed No Wrapping */}
+                {/* Table Footer with Totals - Fixed Matching Columns */}
                 <tfoot className="bg-[#F8FAFC] font-bold border-t-2 border-[#202D3B]/20">
                   <tr>
-                    <td colSpan={4} className="py-3.5 px-4 text-start text-[#202D3B] text-xs font-bold">
+                    <td colSpan={4} className="py-3 px-3 text-start text-[#202D3B] text-xs font-bold">
                       إجمالي الحساب وصافي الرصيد المتبقي:
                     </td>
-                    <td className="py-3.5 px-3 text-center font-mono text-xs sm:text-sm text-rose-600 whitespace-nowrap">
-                      {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[10px] font-sans font-normal">ر.س</span>
+                    <td className="py-3 px-1 text-center font-mono text-xs text-rose-600 whitespace-nowrap tabular-nums print:text-[11px]">
+                      {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[9px] font-sans font-normal">ر.س</span>
                     </td>
-                    <td className="py-3.5 px-3 text-center font-mono text-xs sm:text-sm text-emerald-600 whitespace-nowrap">
-                      {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[10px] font-sans font-normal">ر.س</span>
+                    <td className="py-3 px-1 text-center font-mono text-xs text-emerald-600 whitespace-nowrap tabular-nums print:text-[11px]">
+                      {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[9px] font-sans font-normal">ر.س</span>
                     </td>
-                    <td className="py-3.5 px-3 text-start font-mono text-sm sm:text-base text-[#C59A55] whitespace-nowrap">
-                      {calculations.remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[10px] font-sans font-normal text-slate-500">ر.س</span>
+                    <td className="py-3 px-1 text-center font-mono text-xs sm:text-sm text-[#C59A55] whitespace-nowrap tabular-nums print:text-[11px] font-bold">
+                      {calculations.remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[9px] font-sans font-normal text-slate-500">ر.س</span>
                     </td>
                   </tr>
                 </tfoot>
@@ -1672,7 +1687,7 @@ ${remainingText}
             </div>
 
             {/* Tafqeet & Closing Balance Details */}
-            <div className="bg-gradient-to-r from-amber-50/40 via-slate-50 to-amber-50/40 p-4 rounded-xl border border-amber-200/70 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs mb-6">
+            <div className="bg-gradient-to-r from-amber-50/40 via-slate-50 to-amber-50/40 p-4 rounded-xl border border-amber-200/70 flex flex-col sm:flex-row print:flex-row justify-between items-start sm:items-center print:items-center gap-4 text-xs mb-6">
               <div>
                 <span className="text-slate-400 block text-[11px] font-semibold mb-0.5">
                   إقرار وتفقيط صافي الرصيد المتبقي كتابةً:
@@ -1696,7 +1711,7 @@ ${remainingText}
             </div>
 
             {/* Notes & Bank Details (2 Columns) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-4 mb-8 print:mb-6">
               {/* Notes & Terms */}
               <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200 text-xs space-y-2">
                 <div className="font-bold text-[#202D3B] flex items-center gap-1.5 pb-1 border-b border-slate-200/60">
@@ -1741,7 +1756,7 @@ ${remainingText}
             </div>
 
             {/* Executive Authentication & Signatures Block */}
-            <div className="grid grid-cols-2 gap-8 text-center text-xs pt-8 border-t-2 border-slate-200">
+            <div className="grid grid-cols-2 gap-8 text-center text-xs pt-8 print:pt-4 border-t-2 border-slate-200 print:break-inside-avoid">
               {/* First Party (Contractor) */}
               <div className="flex flex-col items-center">
                 <div className="font-bold text-[#202D3B] text-xs">
