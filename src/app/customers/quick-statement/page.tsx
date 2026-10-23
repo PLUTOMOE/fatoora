@@ -1449,31 +1449,22 @@ ${remainingText}
           {/* Formal Printable Sheet (Executive Corporate Standard) */}
           <div className="printable-statement bg-white p-6 sm:p-10 rounded-2xl border border-slate-200/90 shadow-sm print:p-0 print:border-none print:shadow-none print:rounded-none max-w-4xl print:max-w-none print:w-full print:m-0 mx-auto">
             
-            {/* Top Royal Accent Line */}
-            <div className="h-1 w-full bg-gradient-to-r from-[#202D3B] via-[#C59A55] to-[#202D3B] rounded-full mb-3 print:mb-2" />
-
-            {/* Letterhead */}
-            <div className="flex items-start justify-between border-b-2 border-[#202D3B] pb-2.5 mb-2.5 print:pb-1.5 print:mb-2 gap-4">
+            {/* Letterhead (Standard Professional Accounting Format - Clean Monochrome) */}
+            <div className="flex items-start justify-between border-b-2 border-slate-900 pb-2.5 mb-2.5 print:pb-2 print:mb-2 gap-4">
               {/* Right / Start Column: Statement Title & Reference */}
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full bg-[#C59A55]/15 text-[#C59A55] text-[10px] font-bold tracking-wide">
-                    كشف حساب مشروع رسمي
-                  </span>
-                  <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-bold">
-                    {displayStatementNumber}
-                  </span>
-                </div>
                 <div>
-                  <h1 className="text-xl sm:text-2xl font-black text-[#202D3B] tracking-tight leading-tight">كشف حساب مشروع</h1>
-                  <p className="text-[10px] text-slate-500 font-mono tracking-wider uppercase mt-0.5">
-                    PROJECT STATEMENT OF ACCOUNT
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-950 tracking-tight leading-none font-sans">
+                    كشف حساب
+                  </h1>
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mt-1">
+                    STATEMENT OF ACCOUNT
                   </p>
                 </div>
-                <div className="text-[11px] text-slate-500 flex items-center gap-2.5 pt-0.5">
-                  <span>تاريخ إصدار الكشف: <strong className="font-mono text-slate-800">{formatDate(statementDate)}</strong></span>
+                <div className="text-[11px] text-slate-600 flex items-center gap-3 pt-1 font-medium">
+                  <span>رقم الكشف: <strong className="font-mono text-slate-900 font-bold">{displayStatementNumber}</strong></span>
                   <span className="text-slate-300">|</span>
-                  <span>تاريخ بدء العمل: <strong className="font-mono text-slate-800">{formatDate(startDate)}</strong></span>
+                  <span>تاريخ الإصدار: <strong className="font-mono text-slate-900 font-bold">{formatDate(statementDate)}</strong></span>
                 </div>
               </div>
 
@@ -1490,9 +1481,9 @@ ${remainingText}
                     <button
                       type="button"
                       onClick={() => logoFileInputRef.current?.click()}
-                      className="absolute inset-0 bg-[#202D3B]/70 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold gap-1 print:hidden cursor-pointer"
+                      className="absolute inset-0 bg-slate-900/70 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold gap-1 print:hidden cursor-pointer"
                     >
-                      <Upload className="w-3 h-3 text-[#C59A55]" />
+                      <Upload className="w-3 h-3 text-white" />
                       <span>تغيير</span>
                     </button>
                   </div>
@@ -1503,36 +1494,32 @@ ${remainingText}
                 ) : (
                   <div 
                     onClick={() => logoFileInputRef.current?.click()}
-                    className="w-14 h-14 rounded-xl border-2 border-[#C59A55] bg-gradient-to-br from-[#202D3B] via-[#1c2936] to-[#15202B] p-1.5 flex flex-col items-center justify-center text-center shadow-xs cursor-pointer group mb-1 transition-transform hover:scale-105"
+                    className="w-12 h-12 rounded-lg border border-slate-300 bg-slate-100 p-1 flex flex-col items-center justify-center text-center shadow-2xs cursor-pointer group mb-1 transition-colors hover:border-slate-400"
                     title="انقر لرفع الشعار الخاص بالمنشأة"
                   >
-                    <div className="text-[#C59A55] font-black text-sm tracking-wider leading-none">
+                    <div className="text-slate-900 font-bold text-sm tracking-wider leading-none">
                       {companyInitials}
                     </div>
-                    <div className="w-6 h-0.5 bg-[#C59A55]/60 my-0.5 rounded-full" />
-                    <span className="text-[7px] font-bold text-slate-300 leading-tight block truncate max-w-[50px]">
-                      اعتماد رسمي
-                    </span>
                   </div>
                 )}
 
                 {/* Company Details */}
-                <div className="space-y-0 text-xs text-slate-600">
-                  <h2 className="font-black text-[#202D3B] text-sm sm:text-base leading-tight">
+                <div className="space-y-0 text-xs text-slate-700">
+                  <h2 className="font-bold text-slate-950 text-sm sm:text-base leading-tight">
                     {activeCompany.name}
                   </h2>
-                  <div className="text-[10.5px] text-slate-500 font-mono leading-tight">
+                  <div className="text-[10.5px] text-slate-600 font-mono leading-tight">
                     {activeCompany.crNumber && (
-                      <span>س.ت: <strong className="text-[#202D3B]">{activeCompany.crNumber}</strong></span>
+                      <span>س.ت: <strong className="text-slate-900 font-bold">{activeCompany.crNumber}</strong></span>
                     )}
                     {activeCompany.crNumber && activeCompany.taxNumber && (
                       <span className="mx-1 text-slate-300">|</span>
                     )}
                     {activeCompany.taxNumber && (
-                      <span>الرقم الضريبي: <strong className="text-[#202D3B]">{activeCompany.taxNumber}</strong></span>
+                      <span>الرقم الضريبي: <strong className="text-slate-900 font-bold">{activeCompany.taxNumber}</strong></span>
                     )}
                   </div>
-                  <div className="text-[10.5px] text-slate-500 leading-tight">
+                  <div className="text-[10.5px] text-slate-600 leading-tight">
                     {activeCompany.city && <span>{activeCompany.city}</span>}
                     {activeCompany.city && activeCompany.phone && <span className="mx-1 text-slate-300">|</span>}
                     {activeCompany.phone && <span className="font-mono">هاتف: {activeCompany.phone}</span>}
@@ -1552,44 +1539,44 @@ ${remainingText}
                 </colgroup>
                 <tbody>
                   <tr className="border-b border-slate-200">
-                    <td className="py-1.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 bg-slate-100 font-bold text-slate-800 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
                       العميل / الطرف الثاني:
                     </td>
-                    <td className="py-1.5 px-3 font-bold text-[#202D3B] text-xs sm:text-sm border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 font-bold text-slate-950 text-xs sm:text-sm border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
                       {customerName || 'عميل نقدي'}
                     </td>
-                    <td className="py-1.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 bg-slate-100 font-bold text-slate-800 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
                       رقم العقد / المرجع:
                     </td>
-                    <td className="py-1.5 px-3 font-mono font-bold text-[#202D3B] truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 font-mono font-bold text-slate-950 truncate print:py-1 print:px-2 print:text-[11px]">
                       {projectCode || 'PRJ-2026443'}
                     </td>
                   </tr>
                   <tr className="border-b border-slate-200">
-                    <td className="py-1.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 bg-slate-100 font-bold text-slate-800 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
                       المشروع / البيان:
                     </td>
-                    <td className="py-1.5 px-3 font-bold text-[#202D3B] border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 font-bold text-slate-950 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
                       {displayProjectName}
                     </td>
-                    <td className="py-1.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 bg-slate-100 font-bold text-slate-800 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
                       تاريخ بدء المشروع:
                     </td>
-                    <td className="py-1.5 px-3 font-mono text-slate-700 truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 font-mono text-slate-800 truncate print:py-1 print:px-2 print:text-[11px]">
                       {formatDate(startDate)}
                     </td>
                   </tr>
                   <tr>
-                    <td className="py-1.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 bg-slate-100 font-bold text-slate-800 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
                       الرقم الضريبي للعميل:
                     </td>
-                    <td className="py-1.5 px-3 font-mono font-bold text-[#202D3B] border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 font-mono font-bold text-slate-950 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
                       {customerTaxNumber || 'غير مسجل'}
                     </td>
-                    <td className="py-1.5 px-3 bg-slate-100/80 font-bold text-slate-700 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 bg-slate-100 font-bold text-slate-800 border-e border-slate-200 truncate print:py-1 print:px-2 print:text-[11px]">
                       العملة المعتمدة:
                     </td>
-                    <td className="py-1.5 px-3 font-bold text-[#202D3B] truncate print:py-1 print:px-2 print:text-[11px]">
+                    <td className="py-1.5 px-3 font-bold text-slate-950 truncate print:py-1 print:px-2 print:text-[11px]">
                       ريال سعودي (SAR)
                     </td>
                   </tr>
@@ -1598,7 +1585,7 @@ ${remainingText}
             </div>
 
             {/* Movements & Payments Table */}
-            <div className="overflow-hidden rounded-xl border border-slate-200 mb-2.5 print:mb-2 w-full">
+            <div className="overflow-hidden rounded-xl border border-slate-300 mb-2.5 print:mb-2 w-full">
               <table className="w-full text-right text-xs table-fixed border-collapse">
                 <colgroup>
                   <col className="w-[5%]" />
@@ -1609,7 +1596,7 @@ ${remainingText}
                   <col className="w-[14%]" />
                   <col className="w-[14%]" />
                 </colgroup>
-                <thead className="bg-[#202D3B] text-white font-bold">
+                <thead className="bg-slate-900 text-white font-bold">
                   <tr>
                     <th className="py-2 px-1 text-center print:py-1.5 print:text-[10px]">م</th>
                     <th className="py-2 px-1 text-center whitespace-nowrap print:py-1.5 print:text-[10px]">التاريخ</th>
@@ -1624,38 +1611,38 @@ ${remainingText}
                   {statementRows.map((row) => (
                     <tr 
                       key={row.id} 
-                      className={`transition-colors ${row.id === 'initial-contract' ? 'bg-slate-50/70 font-semibold' : 'hover:bg-slate-50/50'}`}
+                      className={`transition-colors ${row.id === 'initial-contract' ? 'bg-slate-50/90 font-semibold' : 'hover:bg-slate-50/50'}`}
                     >
-                      <td className="py-2 px-1 text-center font-mono text-slate-400 print:py-1 print:text-[10px]">
+                      <td className="py-2 px-1 text-center font-mono text-slate-500 print:py-1 print:text-[10px]">
                         {row.seq}
                       </td>
-                      <td className="py-2 px-1 text-center font-mono text-slate-600 whitespace-nowrap print:py-1 print:text-[10px]">
+                      <td className="py-2 px-1 text-center font-mono text-slate-700 whitespace-nowrap print:py-1 print:text-[10px]">
                         {formatDate(row.date)}
                       </td>
-                      <td className="py-2 px-1 text-center font-mono font-bold text-[#202D3B] whitespace-nowrap print:py-1 print:text-[10px]">
+                      <td className="py-2 px-1 text-center font-mono font-bold text-slate-900 whitespace-nowrap print:py-1 print:text-[10px]">
                         {row.reference}
                       </td>
-                      <td className="py-2 px-3 text-slate-800 print:py-1">
+                      <td className="py-2 px-3 text-slate-900 print:py-1">
                         <span className="font-bold block leading-tight print:text-[10.5px]">{row.statement}</span>
                         {row.paymentMethodLabel && (
-                          <span className="text-[10px] text-slate-400 block font-normal print:text-[8.5px]">
+                          <span className="text-[10px] text-slate-500 block font-normal print:text-[8.5px]">
                             طريقة التعامل: {row.paymentMethodLabel}
                           </span>
                         )}
                       </td>
-                      <td className="py-2 px-1 text-center font-mono font-bold text-rose-600 whitespace-nowrap tabular-nums print:py-1 print:text-[10.5px]">
+                      <td className="py-2 px-1 text-center font-mono font-bold text-slate-900 whitespace-nowrap tabular-nums print:py-1 print:text-[10.5px]">
                         {row.debit > 0 ? row.debit.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}
                       </td>
-                      <td className="py-2 px-1 text-center font-mono font-bold text-emerald-600 whitespace-nowrap tabular-nums print:py-1 print:text-[10.5px]">
+                      <td className="py-2 px-1 text-center font-mono font-bold text-slate-900 whitespace-nowrap tabular-nums print:py-1 print:text-[10.5px]">
                         {row.credit > 0 ? row.credit.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}
                       </td>
-                      <td className="py-2 px-1 text-center font-mono font-bold text-[#202D3B] whitespace-nowrap tabular-nums print:py-1 print:text-[10.5px]">
+                      <td className="py-2 px-1 text-center font-mono font-bold text-slate-950 whitespace-nowrap tabular-nums print:py-1 print:text-[10.5px]">
                         {row.runningBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))}
                   {payments.length === 0 && (
-                    <tr className="bg-slate-50/50 text-slate-500 text-[11px]">
+                    <tr className="bg-slate-50/50 text-slate-600 text-[11px]">
                       <td colSpan={7} className="py-2 px-4 text-center font-medium print:py-1">
                         (لم تسجل دفعات مسددة بعد — كامل المبلغ مستحق كقيمة تعاقدية)
                       </td>
@@ -1664,19 +1651,19 @@ ${remainingText}
                 </tbody>
 
                 {/* Table Footer with Totals - Fixed Matching Columns */}
-                <tfoot className="bg-[#F8FAFC] font-bold border-t-2 border-[#202D3B]/20">
+                <tfoot className="bg-slate-100 font-bold border-t-2 border-b-2 border-slate-900">
                   <tr>
-                    <td colSpan={4} className="py-2 px-3 text-start text-[#202D3B] text-xs font-bold print:py-1.5 print:text-[10.5px]">
+                    <td colSpan={4} className="py-2 px-3 text-start text-slate-950 text-xs font-bold print:py-1.5 print:text-[10.5px]">
                       إجمالي الحساب وصافي الرصيد المتبقي:
                     </td>
-                    <td className="py-2 px-1 text-center font-mono text-xs text-rose-600 whitespace-nowrap tabular-nums print:py-1.5 print:text-[10.5px]">
+                    <td className="py-2 px-1 text-center font-mono text-xs text-slate-950 whitespace-nowrap tabular-nums print:py-1.5 print:text-[10.5px]">
                       {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[9px] font-sans font-normal">ر.س</span>
                     </td>
-                    <td className="py-2 px-1 text-center font-mono text-xs text-emerald-600 whitespace-nowrap tabular-nums print:py-1.5 print:text-[10.5px]">
+                    <td className="py-2 px-1 text-center font-mono text-xs text-slate-950 whitespace-nowrap tabular-nums print:py-1.5 print:text-[10.5px]">
                       {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[9px] font-sans font-normal">ر.س</span>
                     </td>
-                    <td className="py-2 px-1 text-center font-mono text-xs sm:text-sm text-[#C59A55] whitespace-nowrap tabular-nums print:py-1.5 print:text-[10.5px] font-bold">
-                      {calculations.remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[9px] font-sans font-normal text-slate-500">ر.س</span>
+                    <td className="py-2 px-1 text-center font-mono text-xs sm:text-sm text-slate-950 whitespace-nowrap tabular-nums print:py-1.5 print:text-[10.5px] font-bold">
+                      {calculations.remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[9px] font-sans font-normal text-slate-600">ر.س</span>
                     </td>
                   </tr>
                 </tfoot>
@@ -1684,12 +1671,12 @@ ${remainingText}
             </div>
 
             {/* Tafqeet & Closing Balance Details */}
-            <div className="bg-gradient-to-r from-amber-50/40 via-slate-50 to-amber-50/40 p-2.5 print:p-1.5 rounded-xl border border-amber-200/70 flex flex-col sm:flex-row print:flex-row justify-between items-start sm:items-center print:items-center gap-2 text-xs mb-2.5 print:mb-2">
+            <div className="bg-slate-50 p-2.5 print:p-1.5 rounded-lg border border-slate-300 flex flex-col sm:flex-row print:flex-row justify-between items-start sm:items-center print:items-center gap-2 text-xs mb-2.5 print:mb-2">
               <div>
-                <span className="text-slate-400 block text-[10px] font-semibold mb-0.5 print:inline print:me-1.5">
+                <span className="text-slate-500 block text-[10px] font-semibold mb-0.5 print:inline print:me-1.5">
                   إقرار وتفقيط صافي الرصيد المتبقي كتابةً:
                 </span>
-                <span className="font-bold text-[#202D3B] text-xs sm:text-sm tracking-wide">
+                <span className="font-bold text-slate-950 text-xs sm:text-sm tracking-wide">
                   « {tafqeetArabic(Math.abs(calculations.remainingBalance))} »
                 </span>
                 <span className="text-slate-600 me-2 ms-2 font-bold text-[10.5px]">
@@ -1701,49 +1688,49 @@ ${remainingText}
                 </span>
               </div>
 
-              <div className="text-start sm:text-end shrink-0 border-s sm:border-s-0 border-slate-200 ps-3 sm:ps-0 print:border-s-0 print:ps-0">
-                <div className="text-[9px] text-slate-400">تاريخ وتوقيت إصدار الكشف:</div>
-                <div className="font-mono text-xs font-bold text-slate-700">{formatDate(statementDate)}</div>
+              <div className="text-start sm:text-end shrink-0 border-s sm:border-s-0 border-slate-300 ps-3 sm:ps-0 print:border-s-0 print:ps-0">
+                <div className="text-[9px] text-slate-500 font-medium">تاريخ وتوقيت إصدار الكشف:</div>
+                <div className="font-mono text-xs font-bold text-slate-800">{formatDate(statementDate)}</div>
               </div>
             </div>
 
             {/* Notes & Bank Details (2 Columns) */}
             <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-2.5 mb-2.5 print:mb-2">
               {/* Notes & Terms */}
-              <div className="p-2.5 print:p-2 rounded-xl bg-slate-50/70 border border-slate-200 text-xs space-y-1 print:text-[10px]">
-                <div className="font-bold text-[#202D3B] flex items-center gap-1.5 pb-0.5 border-b border-slate-200/60">
-                  <FileText className="w-3 h-3 text-[#C59A55]" />
+              <div className="p-2.5 print:p-2 rounded-xl bg-slate-50/70 border border-slate-300 text-xs space-y-1 print:text-[10px]">
+                <div className="font-bold text-slate-900 flex items-center gap-1.5 pb-0.5 border-b border-slate-200">
+                  <FileText className="w-3.5 h-3.5 text-slate-700" />
                   <span>ملاحظات وشروط السداد:</span>
                 </div>
-                <p className="text-slate-600 leading-snug">
-                  <strong className="text-slate-700">ملاحظات: </strong>
+                <p className="text-slate-700 leading-snug">
+                  <strong className="text-slate-900 font-bold">ملاحظات: </strong>
                   {notes || 'كشف حساب مشروع مستقل يوضح الدفعات المستلمة والمبلغ المتبقي.'}
                 </p>
-                <p className="text-slate-600 leading-snug">
-                  <strong className="text-slate-700">شروط السداد: </strong>
+                <p className="text-slate-700 leading-snug">
+                  <strong className="text-slate-900 font-bold">شروط السداد: </strong>
                   {terms || 'يرجى سداد الدفعة المتبقية فور استكمال مراحل العمل المتفق عليها.'}
                 </p>
               </div>
 
               {/* Official Bank Account for Wire Transfer */}
-              <div className="p-2.5 print:p-2 rounded-xl bg-slate-50/70 border border-slate-200 text-xs space-y-1 print:text-[10px]">
-                <div className="font-bold text-[#202D3B] flex items-center gap-1.5 pb-0.5 border-b border-slate-200/60">
-                  <Building2 className="w-3 h-3 text-[#C59A55]" />
+              <div className="p-2.5 print:p-2 rounded-xl bg-slate-50/70 border border-slate-300 text-xs space-y-1 print:text-[10px]">
+                <div className="font-bold text-slate-900 flex items-center gap-1.5 pb-0.5 border-b border-slate-200">
+                  <Building2 className="w-3.5 h-3.5 text-slate-700" />
                   <span>بيانات التحويل البنكي المعتمد:</span>
                 </div>
-                <div className="space-y-0.5 text-[10.5px] text-slate-600">
+                <div className="space-y-0.5 text-[10.5px] text-slate-700">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">المصرف المعتمد:</span>
-                    <strong className="text-slate-800">{activeCompany.bankName || 'مصرف الراجحي'}</strong>
+                    <span className="text-slate-500">المصرف المعتمد:</span>
+                    <strong className="text-slate-900">{activeCompany.bankName || 'مصرف الراجحي'}</strong>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">اسم المستفيد:</span>
-                    <strong className="text-slate-800">{activeCompany.accountHolder || activeCompany.name}</strong>
+                    <span className="text-slate-500">اسم المستفيد:</span>
+                    <strong className="text-slate-900">{activeCompany.accountHolder || activeCompany.name}</strong>
                   </div>
                   {activeCompany.iban && (
-                    <div className="pt-0.5 border-t border-slate-200/60 flex items-center justify-between gap-2">
-                      <span className="text-slate-400 text-[9.5px]">IBAN:</span>
-                      <div className="font-mono font-bold text-[10px] text-[#202D3B] bg-white px-1.5 py-0.5 rounded border border-slate-200 tracking-wider" dir="ltr">
+                    <div className="pt-0.5 border-t border-slate-200 flex items-center justify-between gap-2">
+                      <span className="text-slate-500 text-[9.5px]">IBAN:</span>
+                      <div className="font-mono font-bold text-[10px] text-slate-950 bg-white px-1.5 py-0.5 rounded border border-slate-300 tracking-wider" dir="ltr">
                         {formatIBAN(activeCompany.iban)}
                       </div>
                     </div>
@@ -1753,43 +1740,43 @@ ${remainingText}
             </div>
 
             {/* Executive Authentication & Signatures Block */}
-            <div className="grid grid-cols-2 gap-6 text-center text-xs pt-2.5 print:pt-1.5 border-t-2 border-slate-200 print:break-inside-avoid">
+            <div className="grid grid-cols-2 gap-6 text-center text-xs pt-2.5 print:pt-1.5 border-t-2 border-slate-300 print:break-inside-avoid">
               {/* First Party (Contractor) */}
               <div className="flex flex-col items-center">
-                <div className="font-bold text-[#202D3B] text-xs print:text-[11px]">
+                <div className="font-bold text-slate-950 text-xs print:text-[11px]">
                   المسؤول المالي / اعتماد المنشأة
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                <div className="text-[10px] text-slate-600 mt-0.5 font-medium">
                   {activeCompany.name}
                 </div>
 
                 {/* Circular Stamp Space */}
                 <div className="my-1 w-14 h-14 print:w-11 print:h-11 rounded-full border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-300 gap-0.5 bg-slate-50/50">
                   <CheckCircle2 className="w-3.5 h-3.5 text-slate-300" />
-                  <span className="text-[7px] font-bold">[ الختم الرسمي ]</span>
+                  <span className="text-[7px] font-bold text-slate-400">[ الختم الرسمي ]</span>
                 </div>
 
                 <div className="w-36 border-b border-slate-400 mb-0.5" />
-                <div className="text-[9px] text-slate-400 font-semibold">التوقيع والاعتماد الرسمي</div>
+                <div className="text-[9px] text-slate-500 font-medium">التوقيع والاعتماد الرسمي</div>
               </div>
 
               {/* Second Party (Customer) */}
               <div className="flex flex-col items-center">
-                <div className="font-bold text-[#202D3B] text-xs print:text-[11px]">
+                <div className="font-bold text-slate-950 text-xs print:text-[11px]">
                   مصادقة واعتماد العميل (الطرف الثاني)
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                <div className="text-[10px] text-slate-600 mt-0.5 font-medium">
                   {customerName || 'المفوض بالاعتماد'}
                 </div>
 
                 {/* Circular Stamp Space */}
                 <div className="my-1 w-14 h-14 print:w-11 print:h-11 rounded-full border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-300 gap-0.5 bg-slate-50/50">
                   <CheckCircle2 className="w-3.5 h-3.5 text-slate-300" />
-                  <span className="text-[7px] font-bold">[ ختم العميل ]</span>
+                  <span className="text-[7px] font-bold text-slate-400">[ ختم العميل ]</span>
                 </div>
 
                 <div className="w-36 border-b border-slate-400 mb-0.5" />
-                <div className="text-[9px] text-slate-400 font-semibold">اسم وتوقيع المفوض بالاستلام</div>
+                <div className="text-[9px] text-slate-500 font-medium">اسم وتوقيع المفوض بالاستلام</div>
               </div>
             </div>
 
