@@ -231,3 +231,54 @@ export interface StatementMovement {
   credit: number; // دائن (سداد أو دفعة لصالح العميل)
   runningBalance: number; // الرصيد التراكمي بعد الحركة
 }
+
+// دفعات سداد المشروع في كشف الحساب السريع بدون فواتير
+export interface ProjectPayment {
+  id: string;
+  date: string;
+  amount: number;
+  statement: string; // البيان (مثال: دفعة أولى مقدمة، دفعة المرحلة الثانية)
+  paymentMethod: PaymentMethod;
+  reference?: string; // رقم الحوالة / الإيصال / الشيك
+  notes?: string;
+}
+
+// كشف حساب مشروع سريع بدون فواتير مسبقة
+export interface QuickProjectStatement {
+  id: string;
+  companyId?: string;
+  statementNumber: string; // مثال: PRJ-ST-001
+  date: string; // تاريخ إصدار الكشف
+  
+  // بيانات العميل
+  customerId?: string; // معرف العميل إذا تم اختياره من القائمة
+  customerName: string;
+  customerPhone?: string;
+  customerTaxNumber?: string;
+  customerCrNumber?: string;
+  customerAddress?: string;
+
+  // تفاصيل المشروع / العقد
+  projectName: string; // اسم المشروع / العقد
+  projectCode?: string; // كود أو رقم المشروع / العقد
+  startDate?: string; // تاريخ بداية التعاقد أو المشروع
+  endDate?: string; // تاريخ الانتهاء
+  projectTotal: number; // المبلغ الإجمالي للمشروع في البداية (مدين)
+  
+  // الضريبة
+  taxType: 'none' | 'included' | 'excluded'; // بدون ضريبة / شامل 15% / غير شامل 15%
+  subtotal: number;
+  taxAmount: number;
+  totalWithTax: number; // المبلغ الإجمالي النهائي المعتمد كمدين
+
+  // جدول الدفعات
+  payments: ProjectPayment[];
+
+  // شروط وملاحظات
+  notes?: string;
+  terms?: string;
+
+  createdAt: string;
+  updatedAt: string;
+}
+

@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { 
   Home, ScrollText, Receipt, Users, 
   Package, ArrowDownLeft, ArrowUpRight, Settings, 
-  X, ChevronLeft, ArrowRightLeft, ChevronDown 
+  X, ChevronLeft, ArrowRightLeft, ChevronDown, FileSpreadsheet 
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useZajelStore } from '@/store/zajelStore';
@@ -25,6 +25,7 @@ export function Sidebar() {
     { label: 'عروض الأسعار', href: '/quotations', icon: ScrollText },
     { label: 'الفواتير', href: '/invoices', icon: Receipt },
     { label: 'العملاء', href: '/customers', icon: Users },
+    { label: 'كشف حساب مشروع', href: '/customers/quick-statement', icon: FileSpreadsheet },
     { label: 'سندات القبض', href: '/receipt-vouchers', icon: ArrowDownLeft },
     { label: 'سندات الصرف', href: '/payment-vouchers', icon: ArrowUpRight },
     { label: 'الأصناف والخدمات', href: '/products', icon: Package },

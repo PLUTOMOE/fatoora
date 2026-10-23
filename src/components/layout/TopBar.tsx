@@ -42,6 +42,7 @@ export function TopBar() {
     if (pathname.startsWith('/quotations')) return { title: 'عروض الأسعار', subtitle: 'إدارة عروض الأسعار ومتابعتها' };
     if (pathname.startsWith('/invoices/new')) return { title: 'إنشاء فاتورة جديدة', subtitle: 'إصدار فاتورة مبيعات جديدة للعميل' };
     if (pathname.startsWith('/invoices')) return { title: 'الفواتير', subtitle: 'إدارة الفواتير المعتمدة والمسودات' };
+    if (pathname.includes('/quick-statement')) return { title: 'كشف حساب مشروع (سريع)', subtitle: 'كشف حساب بالمبلغ الإجمالي والدفعات بالتواريخ بدون فواتير سابقة' };
     if (pathname.includes('/statement')) return { title: 'كشف حساب العميل', subtitle: 'عرض حركة حساب العميل ومتابعة أرصدته' };
     if (pathname.startsWith('/customers')) return { title: 'العملاء', subtitle: 'إدارة بيانات العملاء والأرصدة' };
     if (pathname.startsWith('/receipt-vouchers/new')) return { title: 'سند قبض جديد', subtitle: 'تسجيل تحصيل مالي من العميل' };

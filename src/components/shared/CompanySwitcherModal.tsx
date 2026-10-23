@@ -4,10 +4,11 @@ import React, { useState } from 'react';
 import { 
   Building2, CheckCircle2, Plus, X, 
   ArrowRightLeft, Sparkles, Building, Phone, 
-  MapPin, Hash, ShieldCheck
+  MapPin, Hash, ShieldCheck, Edit3 
 } from 'lucide-react';
 import { useZajelStore } from '@/store/zajelStore';
 import { Company } from '@/types/zajel';
+import { EditCompanyModal } from './EditCompanyModal';
 
 interface CompanySwitcherModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export function CompanySwitcherModal({ isOpen, onClose }: CompanySwitcherModalPr
   const [newPhone, setNewPhone] = useState('');
   const [newPrefix, setNewPrefix] = useState('');
   const [switchSuccess, setSwitchSuccess] = useState<string | null>(null);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
 
   if (!isOpen) return null;
 
@@ -180,7 +182,19 @@ export function CompanySwitcherModal({ isOpen, onClose }: CompanySwitcherModalPr
                       </div>
                     </div>
 
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingCompany(comp);
+                        }}
+                        className="p-2 rounded-xl text-slate-400 hover:text-[#C59A55] hover:bg-[#C59A55]/10 border border-slate-200 transition-colors"
+                        title="تعديل بيانات المؤسسة"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+
                       {isSelected ? (
                         <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center">
                           <CheckCircle2 className="w-5 h-5" />
@@ -293,6 +307,17 @@ export function CompanySwitcherModal({ isOpen, onClose }: CompanySwitcherModalPr
             </div>
           </form>
         )}
+
+        {/* Edit Company Modal */}
+        <EditCompanyModal
+          isOpen={!!editingCompany}
+          company={editingCompany}
+          onClose={() => setEditingCompany(null)}
+          onSuccess={(msg) => {
+            setSwitchSuccess(msg);
+            setTimeout(() => setSwitchSuccess(null), 3000);
+          }}
+        />
       </div>
     </div>
   );

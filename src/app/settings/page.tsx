@@ -6,11 +6,12 @@ import {
   Settings, Building2, CreditCard, FileText, 
   Users, Save, CheckCircle2, RotateCcw, Trash2, 
   ShieldCheck, Sparkles, Plus, Sun, Moon, 
-  Check, AlertCircle, Building, Layers
+  Check, AlertCircle, Building, Layers, Edit3
 } from 'lucide-react';
 import { useZajelStore } from '@/store/zajelStore';
 import { ZajelLogo } from '@/components/shared/ZajelLogo';
 import { UserRole, Company } from '@/types/zajel';
+import { EditCompanyModal } from '@/components/shared/EditCompanyModal';
 
 function SettingsContent() {
   const searchParams = useSearchParams();
@@ -46,6 +47,7 @@ function SettingsContent() {
 
   // Form states for adding a new company
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [newCompany, setNewCompany] = useState<Omit<Company, 'id'>>({
     name: '',
     logoUrl: '',
@@ -311,19 +313,31 @@ function SettingsContent() {
                       </div>
 
                       <div className="mt-4 flex items-center justify-between text-[11px] pt-3 border-t border-slate-100">
-                        <span className="text-slate-500">
+                        <span className="text-slate-500 truncate max-w-[180px]">
                           {comp.bankName ? `${comp.bankName} (${comp.iban ? comp.iban.slice(-6) : ''}...)` : 'لا يوجد حساب بنكي'}
                         </span>
-                        {companies.length > 1 && !comp.isDefault && (
+                        
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => handleDeleteComp(comp.id, comp.name)}
-                            className="text-rose-500 hover:text-rose-700 flex items-center gap-1 font-bold"
+                            onClick={() => setEditingCompany(comp)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#C59A55]/10 hover:bg-[#C59A55] text-[#C59A55] hover:text-white font-bold transition-colors"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>حذف</span>
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>تعديل البيانات</span>
                           </button>
-                        )}
+
+                          {companies.length > 1 && !comp.isDefault && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteComp(comp.id, comp.name)}
+                              className="text-rose-500 hover:text-rose-700 flex items-center gap-1 font-bold p-1"
+                              title="حذف الشركة"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -488,6 +502,16 @@ function SettingsContent() {
                   </div>
                 </div>
               )}
+              {/* Edit Company Modal */}
+              <EditCompanyModal
+                isOpen={!!editingCompany}
+                company={editingCompany}
+                onClose={() => setEditingCompany(null)}
+                onSuccess={(msg) => {
+                  setSavedNotice(msg);
+                  setTimeout(() => setSavedNotice(null), 3000);
+                }}
+              />
             </div>
           )}
 

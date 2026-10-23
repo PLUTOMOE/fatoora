@@ -51,13 +51,23 @@ export default function CustomersListPage() {
           <p className="text-xs text-slate-500 mt-0.5">إدارة بيانات العملاء والشركات ومتابعة الأرصدة وكشوف الحساب</p>
         </div>
 
-        <Link
-          href="/customers/new"
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white text-xs font-bold shadow-sm shadow-[#C59A55]/20 transition-all self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>عميل جديد</span>
-        </Link>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Link
+            href="/customers/quick-statement"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#C59A55] text-[#C59A55] hover:bg-[#C59A55]/10 text-xs font-bold transition-all shadow-xs"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>كشف حساب مشروع (سريع)</span>
+          </Link>
+
+          <Link
+            href="/customers/new"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white text-xs font-bold shadow-sm shadow-[#C59A55]/20 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>عميل جديد</span>
+          </Link>
+        </div>
       </div>
 
       {deleteError && (

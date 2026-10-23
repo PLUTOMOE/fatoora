@@ -6,7 +6,7 @@ import {
   Customer, ProductItem, Quotation, Invoice, 
   ReceiptVoucher, PaymentVoucher, CompanySettings, 
   UserProfile, UserRole, StatementMovement,
-  ThemeMode, Company 
+  ThemeMode, Company, QuickProjectStatement, ProjectPayment 
 } from '@/types/zajel';
 
 interface ZajelState {
@@ -21,6 +21,8 @@ interface ZajelState {
   invoices: Invoice[];
   receiptVouchers: ReceiptVoucher[];
   paymentVouchers: PaymentVoucher[];
+  quickStatements: QuickProjectStatement[];
+
   
   // Theme
   setThemeMode: (mode: ThemeMode) => void;
@@ -80,6 +82,12 @@ interface ZajelState {
     totalCredit: number;
     closingBalance: number;
   };
+
+  // Quick Project Statements (كشوف حساب المشاريع بدون فواتير سابقة)
+  addQuickStatement: (statement: Omit<QuickProjectStatement, 'id' | 'createdAt' | 'updatedAt' | 'statementNumber'>) => string;
+  updateQuickStatement: (id: string, statement: Partial<QuickProjectStatement>) => void;
+  deleteQuickStatement: (id: string) => void;
+  getQuickStatement: (id: string) => QuickProjectStatement | undefined;
 
   // Demo Data Reset & Clean Start
   resetToDemoData: () => void;
@@ -566,6 +574,7 @@ export const useZajelStore = create<ZajelState>()(
       invoices: [],
       receiptVouchers: [],
       paymentVouchers: [],
+      quickStatements: [],
 
       // Theme
       setThemeMode: (mode) => set({ themeMode: mode }),
@@ -1174,6 +1183,45 @@ export const useZajelStore = create<ZajelState>()(
         };
       },
 
+      // === Quick Project Statements (كشوف حساب المشاريع السريعة بدون فواتير مسبقة) ===
+      addQuickStatement: (data) => {
+        const id = 'prj-st-' + Date.now();
+        const existingCount = get().quickStatements?.length || 0;
+        const statementNumber = `ST-PRJ-${String(existingCount + 1).padStart(3, '0')}`;
+        const newStatement: QuickProjectStatement = {
+          ...data,
+          id,
+          companyId: data.companyId || get().activeCompanyId,
+          statementNumber,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          quickStatements: [newStatement, ...(state.quickStatements || [])],
+        }));
+        return id;
+      },
+
+      updateQuickStatement: (id, data) => {
+        set((state) => ({
+          quickStatements: (state.quickStatements || []).map((st) =>
+            st.id === id
+              ? { ...st, ...data, updatedAt: new Date().toISOString() }
+              : st
+          ),
+        }));
+      },
+
+      deleteQuickStatement: (id) => {
+        set((state) => ({
+          quickStatements: (state.quickStatements || []).filter((st) => st.id !== id),
+        }));
+      },
+
+      getQuickStatement: (id) => {
+        return (get().quickStatements || []).find((st) => st.id === id);
+      },
+
       // === Reset / Demo Handlers ===
       resetToDemoData: () => {
         const compId = get().activeCompanyId;
@@ -1186,6 +1234,7 @@ export const useZajelStore = create<ZajelState>()(
           invoices: DEMO_INVOICES.map((i) => ({ ...i, companyId: compId })),
           receiptVouchers: DEMO_RECEIPTS.map((r) => ({ ...r, companyId: compId })),
           paymentVouchers: DEMO_PAYMENTS.map((p) => ({ ...p, companyId: compId })),
+          quickStatements: [],
         });
       },
 
@@ -1197,6 +1246,7 @@ export const useZajelStore = create<ZajelState>()(
           invoices: [],
           receiptVouchers: [],
           paymentVouchers: [],
+          quickStatements: [],
         });
       },
     }),
