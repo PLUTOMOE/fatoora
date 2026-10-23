@@ -421,7 +421,7 @@ export default function CustomersListPage() {
             </div>
 
             <Link
-              href="/customers/quick-statement"
+              href="/customers/quick-statement?tab=new"
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#202D3B] hover:bg-[#15202B] text-white text-xs font-bold transition-all shadow-xs self-stretch sm:self-auto justify-center"
             >
               <Plus className="w-4 h-4 text-[#C59A55]" />
@@ -459,7 +459,7 @@ export default function CustomersListPage() {
                           يمكنك إنشاء كشف حساب فوري لمشروع برقم إجمالي ودفعات بالتواريخ بدون الحاجة لفواتير سابقة
                         </p>
                         <Link
-                          href="/customers/quick-statement"
+                          href="/customers/quick-statement?tab=new"
                           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C59A55] text-white font-bold hover:bg-[#B38944] transition-all"
                         >
                           <Plus className="w-4 h-4" />

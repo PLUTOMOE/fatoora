@@ -9,7 +9,7 @@ import {
   Scale, CheckCircle2, AlertCircle, Building2, User, 
   Phone, Calendar, Edit3, History, Check, RefreshCw, 
   CreditCard, Banknote, Sparkles, FileText, ChevronRight,
-  Upload, ImageIcon
+  Upload, ImageIcon, Search
 } from 'lucide-react';
 import { useZajelStore } from '@/store/zajelStore';
 import { ZajelLogo } from '@/components/shared/ZajelLogo';
@@ -38,7 +38,7 @@ function QuickStatementContent() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(activeCompanyId || companies?.[0]?.id || '');
   const [editingModalCompany, setEditingModalCompany] = useState<Company | null>(null);
 
-  // Success modal feedback state
+  // Success modal feedback state (kept for compatibility)
   const [saveSuccessModal, setSaveSuccessModal] = useState<{
     isOpen: boolean;
     statementNumber: string;
@@ -78,8 +78,10 @@ function QuickStatementContent() {
     reader.readAsDataURL(file);
   };
 
-  // View state: 'editor' | 'preview' | 'history'
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'history'>('editor');
+  // View state: 'history' (كشوف الحساب المصدرة) | 'editor' (عمل كشف حساب جديد) | 'preview' (معاينة وطباعة)
+  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'history'>('history');
+  const [recentlySavedId, setRecentlySavedId] = useState<string | null>(null);
+  const [historySearch, setHistorySearch] = useState<string>('');
   
   // Current active statement ID (if editing saved one)
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -164,7 +166,7 @@ function QuickStatementContent() {
     return iban.replace(/(.{4})/g, '$1 ').trim();
   };
 
-  // Check URL params if customer pre-selected or print requested
+  // Check URL params if customer pre-selected or specific tab requested
   useEffect(() => {
     const custId = searchParams.get('customerId');
     if (custId) {
@@ -179,11 +181,27 @@ function QuickStatementContent() {
     }
 
     const editId = searchParams.get('id');
+    const tabParam = searchParams.get('tab');
+
     if (editId) {
-      const requestedTab = (searchParams.get('tab') as 'editor' | 'preview') || 'editor';
+      const requestedTab = (tabParam as 'editor' | 'preview') || 'editor';
       loadStatement(editId, requestedTab);
+    } else if (tabParam === 'editor' || tabParam === 'new') {
+      setActiveTab('editor');
+    } else if (tabParam === 'preview') {
+      setActiveTab('preview');
+    } else if (tabParam === 'history' || tabParam === 'issued') {
+      setActiveTab('history');
+    } else {
+      // Default: If issued statements exist, open history (كشوف الحساب المصدرة)
+      // If no statements exist yet, open editor (عمل كشف حساب جديد)
+      if (quickStatements && quickStatements.length > 0) {
+        setActiveTab('history');
+      } else {
+        setActiveTab('editor');
+      }
     }
-  }, [searchParams, customers]);
+  }, [searchParams, customers, quickStatements?.length]);
 
   // Handle customer selection from existing list
   const handleCustomerSelect = (id: string) => {
@@ -334,8 +352,45 @@ function QuickStatementContent() {
     setPayments(payments.filter(p => p.id !== id));
   };
 
+  // Calculate aggregate stats for issued statements history
+  const historyStats = useMemo(() => {
+    const list = quickStatements || [];
+    let totalProjects = 0;
+    let totalPaid = 0;
+    let totalRemaining = 0;
+
+    list.forEach(st => {
+      const tot = st.totalWithTax || st.projectTotal || 0;
+      const pd = (st.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      totalProjects += tot;
+      totalPaid += pd;
+      totalRemaining += (tot - pd);
+    });
+
+    return {
+      count: list.length,
+      totalProjects,
+      totalPaid,
+      totalRemaining,
+    };
+  }, [quickStatements]);
+
+  // Filtered issued statements
+  const filteredHistory = useMemo(() => {
+    const list = quickStatements || [];
+    if (!historySearch.trim()) return list;
+    const q = historySearch.trim().toLowerCase();
+    return list.filter(st => 
+      st.statementNumber?.toLowerCase().includes(q) ||
+      st.customerName?.toLowerCase().includes(q) ||
+      st.projectName?.toLowerCase().includes(q) ||
+      st.projectCode?.toLowerCase().includes(q) ||
+      st.customerPhone?.includes(q)
+    );
+  }, [quickStatements, historySearch]);
+
   // Save statement to store with robust fallbacks and seamless registration
-  const handleSaveStatement = (autoPreview: boolean = true) => {
+  const handleSaveStatement = (targetView: 'history' | 'preview' = 'history') => {
     const finalCustomerName = customerName.trim() || 'عميل نقدي';
     
     // Automatically register customer in customers directory if not already there
@@ -403,29 +458,20 @@ function QuickStatementContent() {
       updateQuickStatement(currentId, payload);
       const existing = (quickStatements || []).find(s => s.id === currentId);
       savedNum = existing?.statementNumber || 'ST-PRJ';
-      setToastMessage(`تم تحديث كشف الحساب (${savedNum}) بنجاح!`);
+      setToastMessage(`تم تحديث كشف الحساب (${savedNum}) في كشوف الحساب المصدرة بنجاح!`);
     } else {
       savedId = addQuickStatement(payload);
       setCurrentId(savedId);
       const existingCount = quickStatements?.length || 0;
       savedNum = `ST-PRJ-${String(existingCount + 1).padStart(3, '0')}`;
-      setToastMessage(`تم حفظ كشف الحساب (${savedNum}) في السجل بنجاح!`);
+      setToastMessage(`تم حفظ كشف الحساب (${savedNum}) بنجاح وإدراجه في كشوف الحساب المصدرة!`);
     }
 
-    // Set success modal info
-    setSaveSuccessModal({
-      isOpen: true,
-      statementId: savedId!,
-      statementNumber: savedNum,
-      customerName: finalCustomerName,
-      projectName: projectName.trim() || 'مشروع تعاقدي',
-      totalAmount: calculations.totalWithTax || finalProjectTotal,
-      remainingBalance: calculations.remainingBalance,
-    });
+    setRecentlySavedId(savedId);
 
-    if (autoPreview) {
-      setActiveTab('preview');
-    }
+    // Direct transition to the desired tab
+    setActiveTab(targetView);
+    setSaveSuccessModal(null);
 
     setTimeout(() => setToastMessage(null), 4000);
   };
@@ -605,75 +651,105 @@ ${remainingText}
               <ArrowRight className="w-4 h-4" />
             </Link>
             <h1 className="text-xl font-bold text-[#202D3B]">
-              كشف حساب مشروع (سريع بدون فواتير)
+              كشوف الحساب والمشاريع
             </h1>
-            {currentId && (
+            {currentId && activeTab === 'editor' && (
               <span className="px-2.5 py-0.5 rounded-full bg-[#C59A55]/15 text-[#C59A55] text-[11px] font-bold">
-                كشف محفوظ
+                تعديل: {displayStatementNumber}
               </span>
             )}
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            أدخل إجمالي قيمة المشروع وسجل الدفعات بالتواريخ لاستخراج كشف حساب مالي دقيق وفوري للعميل
+            إدارة كشوف الحساب المصدرة والبحث فيها، أو إصدار كشف حساب جديد بمبالغ ودفعات فورية
           </p>
         </div>
 
         {/* Tab Controls & Primary Actions */}
         <div className="flex flex-wrap items-center gap-2">
           
-          {/* Tab Switcher */}
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center text-xs font-bold">
+          {/* Main Tab Switcher */}
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center text-xs font-bold gap-1">
+            {/* Tab 1: كشوف الحساب المصدرة */}
             <button
-              onClick={() => setActiveTab('editor')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                activeTab === 'editor' 
-                  ? 'bg-white text-[#202D3B] shadow-xs' 
+              type="button"
+              onClick={() => setActiveTab('history')}
+              className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-2 ${
+                activeTab === 'history' 
+                  ? 'bg-[#202D3B] text-white shadow-xs' 
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>إدخال البيانات والدفعات</span>
+              <FileSpreadsheet className={`w-3.5 h-3.5 ${activeTab === 'history' ? 'text-[#C59A55]' : ''}`} />
+              <span>كشوف الحساب المصدرة</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {quickStatements?.length || 0}
+              </span>
             </button>
+
+            {/* Tab 2: عمل كشف حساب جديد */}
             <button
+              type="button"
+              onClick={() => {
+                if (activeTab !== 'editor' && !currentId) {
+                  handleResetNew();
+                } else if (activeTab !== 'editor' && currentId) {
+                  setActiveTab('editor');
+                } else if (activeTab === 'editor' && currentId) {
+                  // already in editor editing
+                } else {
+                  handleResetNew();
+                }
+              }}
+              className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
+                activeTab === 'editor' 
+                  ? 'bg-white text-[#202D3B] shadow-xs border border-slate-200/80 font-bold' 
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Plus className="w-3.5 h-3.5 text-[#C59A55]" />
+              <span>{currentId ? `تعديل الكشف (${displayStatementNumber})` : 'عمل كشف حساب جديد'}</span>
+            </button>
+
+            {/* Tab 3: معاينة وطباعة الكشف (A4) */}
+            <button
+              type="button"
               onClick={() => setActiveTab('preview')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 ${
                 activeTab === 'preview' 
-                  ? 'bg-white text-[#C59A55] shadow-xs' 
+                  ? 'bg-[#C59A55] text-white shadow-xs font-bold' 
                   : 'text-slate-600 hover:text-[#C59A55]'
               }`}
             >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>معاينة كشف الحساب والطباعة</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                activeTab === 'history' 
-                  ? 'bg-white text-[#202D3B] shadow-xs' 
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>الكشوف المحفوظة ({quickStatements?.length || 0})</span>
+              <Printer className="w-3.5 h-3.5" />
+              <span>معاينة وطباعة A4</span>
             </button>
           </div>
 
-          {/* New / Save Buttons */}
-          <button
-            onClick={handleResetNew}
-            className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all"
-            title="إنشاء كشف حساب جديد فارغ"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          {/* Contextual Action Button */}
+          {activeTab === 'editor' && (
+            <button
+              type="button"
+              onClick={() => handleSaveStatement('history')}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#202D3B] hover:bg-[#15202B] text-white text-xs font-bold shadow-xs transition-all"
+              title="حفظ كشف الحساب والانتقال إلى قائمة كشوف الحساب المصدرة"
+            >
+              <Save className="w-3.5 h-3.5 text-[#C59A55]" />
+              <span>حفظ الكشف</span>
+            </button>
+          )}
 
-          <button
-            onClick={handleSaveStatement}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#202D3B] hover:bg-[#15202B] text-white text-xs font-bold shadow-xs transition-all"
-          >
-            <Save className="w-3.5 h-3.5 text-[#C59A55]" />
-            <span>حفظ الكشف</span>
-          </button>
+          {activeTab === 'history' && (
+            <button
+              type="button"
+              onClick={handleResetNew}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white text-xs font-bold shadow-xs transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ كشف جديد</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -713,10 +789,43 @@ ${remainingText}
       )}
 
       {/* =========================================================================
-          TAB 1: DATA & PAYMENTS BUILDER / EDITOR
+          TAB 2: DATA & PAYMENTS BUILDER / EDITOR (عمل كشف حساب جديد / تعديل)
          ========================================================================= */}
       {activeTab === 'editor' && (
         <div className="space-y-6 print:hidden">
+
+          {/* Active Editing Notice */}
+          {currentId && (
+            <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5 text-amber-900">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                <div>
+                  <p className="font-bold">
+                    أنت تقوم الآن بتعديل كشف الحساب المصدر رقم ({displayStatementNumber})
+                  </p>
+                  <p className="text-[11px] text-amber-800/80 mt-0.5">
+                    العميل: {customerName || 'بدون اسم'} | المشروع: {projectName || 'مشروع تعاقدي'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetNew}
+                  className="px-3.5 py-1.5 rounded-xl bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 font-bold text-xs transition-colors shadow-2xs"
+                >
+                  إلغاء وبدء كشف جديد
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('history')}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-900 text-white font-bold text-xs hover:bg-amber-950 transition-colors"
+                >
+                  العودة لكشوف الحساب المصدرة
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Section 0: Issuing Company & Logo */}
           <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
@@ -1223,20 +1332,20 @@ ${remainingText}
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               <button
                 type="button"
-                onClick={() => handleSaveStatement(false)}
-                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                onClick={() => handleSaveStatement('history')}
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-[#202D3B] hover:bg-[#15202B] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4 text-[#C59A55]" />
-                <span>حفظ في السجل</span>
+                <span>حفظ كشف الحساب (كشوف الحساب المصدرة)</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleSaveStatement(true)}
-                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-[#202D3B] hover:bg-[#15202B] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2"
+                onClick={() => handleSaveStatement('preview')}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-2"
               >
-                <CheckCircle2 className="w-4 h-4 text-[#C59A55]" />
-                <span>حفظ والانتقال للمعاينة والطباعة</span>
+                <Printer className="w-4 h-4 text-[#C59A55]" />
+                <span>حفظ ومعاينة الطباعة A4</span>
               </button>
             </div>
           </div>
@@ -1254,11 +1363,21 @@ ${remainingText}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 print:hidden">
             <div className="flex items-center gap-2 flex-wrap">
               <button
+                type="button"
+                onClick={() => setActiveTab('history')}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition-all"
+              >
+                <ArrowRight className="w-4 h-4" />
+                <span>كشوف الحساب المصدرة</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab('editor')}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-all"
               >
-                <ArrowRight className="w-4 h-4" />
-                <span>العودة لتعديل البيانات والدفعات</span>
+                <Edit3 className="w-3.5 h-3.5 text-[#C59A55]" />
+                <span>تعديل بيانات الكشف والدفعات</span>
               </button>
 
               {/* Institution Quick Switcher on Preview */}
@@ -1310,11 +1429,11 @@ ${remainingText}
               </button>
 
               <button
-                onClick={handleSaveStatement}
+                onClick={() => handleSaveStatement('history')}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-[#202D3B] hover:bg-slate-50 text-xs font-bold transition-all"
               >
                 <Save className="w-3.5 h-3.5 text-[#C59A55]" />
-                <span>حفظ في السجل</span>
+                <span>حفظ في كشوف الحساب المصدرة</span>
               </button>
 
               <button
@@ -1668,124 +1787,291 @@ ${remainingText}
       )}
 
       {/* =========================================================================
-          TAB 3: SAVED STATEMENTS HISTORY
+          TAB 1 (PRIMARY): ISSUED STATEMENTS (كشوف الحساب المصدرة)
          ========================================================================= */}
       {activeTab === 'history' && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4 print:hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h2 className="text-sm font-bold text-[#202D3B]">سجل كشوف حساب المشاريع المحفوظة</h2>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                يمكنك إعادة فتح أي كشف وتعديل دفعاته، أو طباعته في أي وقت
-              </p>
+        <div className="space-y-4 print:hidden">
+
+          {/* Recently Saved Statement Banner */}
+          {recentlySavedId && (
+            <div className="bg-emerald-50 border border-emerald-200/90 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs animate-in fade-in duration-300">
+              <div className="flex items-center gap-2.5 text-emerald-800">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <div>
+                  <p className="font-bold">
+                    تم حفظ كشف الحساب بنجاح وإدراجه ضمن كشوف الحساب المصدرة!
+                  </p>
+                  <p className="text-[11px] text-emerald-700/80 mt-0.5">
+                    يمكنك الآن معاينة كشف الحساب وطباعته A4 أو مشاركة ملخصه السريع عبر واتساب
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => loadStatement(recentlySavedId, 'preview')}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#202D3B] text-white text-xs font-bold hover:bg-[#15202B] transition-colors flex items-center gap-1.5 shadow-2xs"
+                >
+                  <Printer className="w-3.5 h-3.5 text-[#C59A55]" />
+                  <span>معاينة وطباعة A4</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetNew}
+                  className="px-3.5 py-1.5 rounded-xl bg-white border border-emerald-300 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition-colors"
+                >
+                  + عمل كشف جديد
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecentlySavedId(null)}
+                  className="p-1.5 text-emerald-600 hover:text-emerald-800 text-xs"
+                  title="إغلاق التنبيه"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Financial Summary Ribbon for Issued Statements */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <span className="text-slate-500 text-[11px] block">الكشوف المصدرة:</span>
+              <span className="font-mono font-bold text-base text-[#202D3B]">
+                {historyStats.count} <span className="text-xs font-normal text-slate-500">كشف</span>
+              </span>
+            </div>
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <span className="text-slate-500 text-[11px] block">إجمالي المشاريع (مدين):</span>
+              <span className="font-mono font-bold text-base text-rose-600">
+                {formatCurrency(historyStats.totalProjects)}
+              </span>
+            </div>
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <span className="text-slate-500 text-[11px] block">إجمالي المسدد (دائن):</span>
+              <span className="font-mono font-bold text-base text-emerald-600">
+                {formatCurrency(historyStats.totalPaid)}
+              </span>
+            </div>
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <span className="text-slate-500 text-[11px] block">إجمالي المتبقي المستحق:</span>
+              <span className={`font-mono font-bold text-base ${historyStats.totalRemaining > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                {formatCurrency(historyStats.totalRemaining)}
+              </span>
+            </div>
+          </div>
+
+          {/* Search & Actions Toolbar */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+            <div className="relative w-full sm:w-96">
+              <Search className="w-4 h-4 absolute start-3.5 top-3 text-slate-400" />
+              <input
+                type="text"
+                placeholder="البحث برقم الكشف، اسم العميل، الهاتف، أو اسم المشروع..."
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl ps-10 pe-8 py-2 text-[#202D3B] placeholder-slate-400 focus:outline-none focus:border-[#C59A55]"
+              />
+              {historySearch && (
+                <button
+                  type="button"
+                  onClick={() => setHistorySearch('')}
+                  className="absolute end-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
             <button
+              type="button"
               onClick={handleResetNew}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#C59A55] text-white text-xs font-bold transition-all shadow-xs"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#202D3B] hover:bg-[#15202B] text-white text-xs font-bold transition-all shadow-xs self-stretch sm:self-auto justify-center"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>كشف جديد</span>
+              <Plus className="w-4 h-4 text-[#C59A55]" />
+              <span>عمل كشف حساب جديد</span>
             </button>
           </div>
 
-          {!quickStatements || quickStatements.length === 0 ? (
-            <div className="text-center py-16 space-y-3">
-              <FileSpreadsheet className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-xs font-semibold text-slate-500">لا توجد كشوف حساب مشاريع محفوظة حتى الآن</p>
-              <button
-                onClick={() => setActiveTab('editor')}
-                className="text-xs font-bold text-[#C59A55] hover:underline"
-              >
-                إنشاء أول كشف حساب الآن
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-right text-xs">
-                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                  <tr>
-                    <th className="py-3 px-3">رقم الكشف</th>
-                    <th className="py-3 px-3">تاريخ الإصدار</th>
-                    <th className="py-3 px-4">اسم العميل</th>
-                    <th className="py-3 px-4">اسم المشروع</th>
-                    <th className="py-3 px-3 text-center">قيمة المشروع</th>
-                    <th className="py-3 px-3 text-center">المسدد</th>
-                    <th className="py-3 px-3 text-center">المتبقي</th>
-                    <th className="py-3 px-3 text-center">إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {quickStatements.map((st) => {
-                    const paid = (st.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-                    const rem = (st.totalWithTax || st.projectTotal) - paid;
+          {/* Issued Statements Data Table */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            {!quickStatements || quickStatements.length === 0 ? (
+              <div className="text-center py-16 space-y-3">
+                <FileSpreadsheet className="w-12 h-12 text-slate-300 mx-auto" />
+                <h3 className="text-sm font-bold text-[#202D3B]">لا توجد كشوف حساب مشاريع مصدرة حتى الآن</h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  يمكنك البدء بعمل كشف حساب جديد بالمبلغ الإجمالي والدفعات وتواريخها، وسيتم حفظه تلقائياً هنا في كشوف الحساب المصدرة
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleResetNew}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C59A55] text-white text-xs font-bold hover:bg-[#B38944] transition-all shadow-xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>عمل أول كشف حساب الآن</span>
+                  </button>
+                </div>
+              </div>
+            ) : filteredHistory.length === 0 ? (
+              <div className="text-center py-14 space-y-2">
+                <Search className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-xs font-bold text-slate-600">لا توجد كشوف حساب مطابقة لبحثك «{historySearch}»</p>
+                <button
+                  type="button"
+                  onClick={() => setHistorySearch('')}
+                  className="text-xs text-[#C59A55] font-bold hover:underline"
+                >
+                  مسح كلمة البحث وعرض كل الكشوف المصدرة
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-xs">
+                  <thead className="bg-slate-50/80 text-slate-600 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="py-3 px-3">رقم الكشف</th>
+                      <th className="py-3 px-3">تاريخ الإصدار</th>
+                      <th className="py-3 px-4">اسم العميل</th>
+                      <th className="py-3 px-4">المشروع / العقد</th>
+                      <th className="py-3 px-3">المنشأة المصدرة</th>
+                      <th className="py-3 px-3 text-center">إجمالي المشروع</th>
+                      <th className="py-3 px-3 text-center">المسدد</th>
+                      <th className="py-3 px-3 text-center">المتبقي</th>
+                      <th className="py-3 px-3 text-center">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredHistory.map((st) => {
+                      const totalAmount = st.totalWithTax || st.projectTotal || 0;
+                      const paidAmount = (st.payments || []).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+                      const remainingAmount = totalAmount - paidAmount;
+                      const isRecentlySaved = st.id === recentlySavedId;
+                      const issuingComp = (companies || []).find(c => c.id === st.companyId) || activeCompany;
 
-                    return (
-                      <tr key={st.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3 px-3 font-mono font-bold text-[#C59A55]">
-                          {st.statementNumber}
-                        </td>
-                        <td className="py-3 px-3 font-mono text-slate-600">
-                          {formatDate(st.date)}
-                        </td>
-                        <td className="py-3 px-4 font-bold text-[#202D3B]">
-                          {st.customerName}
-                        </td>
-                        <td className="py-3 px-4 text-slate-700">
-                          {st.projectName || '-'}
-                        </td>
-                        <td className="py-3 px-3 text-center font-mono font-bold text-rose-600">
-                          {(st.totalWithTax || st.projectTotal).toLocaleString()} ر.س
-                        </td>
-                        <td className="py-3 px-3 text-center font-mono font-bold text-emerald-600">
-                          {paid.toLocaleString()} ر.س
-                        </td>
-                        <td className="py-3 px-3 text-center font-mono font-bold">
-                          <span className={rem > 0 ? 'text-amber-600' : 'text-emerald-600'}>
-                            {rem.toLocaleString()} ر.س
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
+                      return (
+                        <tr 
+                          key={st.id} 
+                          className={`transition-colors ${
+                            isRecentlySaved 
+                              ? 'bg-emerald-50/70 border-s-4 border-emerald-500' 
+                              : 'hover:bg-slate-50/70'
+                          }`}
+                        >
+                          <td className="py-3.5 px-3 font-mono font-bold text-[#C59A55]">
                             <button
-                              onClick={() => loadStatement(st.id)}
-                              className="px-2.5 py-1 rounded-lg bg-[#C59A55]/10 hover:bg-[#C59A55] text-[#C59A55] hover:text-white font-bold text-[11px] transition-colors"
+                              type="button"
+                              onClick={() => loadStatement(st.id, 'preview')}
+                              className="hover:underline flex items-center gap-1.5"
+                              title="معاينة وطباعة كشف الحساب"
                             >
-                              فتح وتعديل
+                              <span>{st.statementNumber}</span>
+                              {isRecentlySaved && (
+                                <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-bold">
+                                  جديد
+                                </span>
+                              )}
                             </button>
-                            <button
-                              onClick={() => {
-                                loadStatement(st.id);
-                                setTimeout(() => {
-                                  setActiveTab('preview');
-                                  window.print();
-                                }, 300);
-                              }}
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
-                              title="طباعة مباشرة"
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`هل أنت متأكد من حذف كشف الحساب (${st.statementNumber})؟`)) {
-                                  deleteQuickStatement(st.id);
-                                }
-                              }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                              title="حذف الكشف"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          </td>
+                          <td className="py-3.5 px-3 font-mono text-slate-600">
+                            {formatDate(st.date)}
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-[#202D3B]">
+                            <span>{st.customerName}</span>
+                            {st.customerPhone && (
+                              <span className="block text-[10px] font-mono text-slate-400 font-normal">
+                                {st.customerPhone}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-700">
+                            <span className="font-medium block">{st.projectName || '-'}</span>
+                            {st.projectCode && (
+                              <span className="text-[10px] font-mono text-slate-400">مرجع: {st.projectCode}</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3 text-slate-500 text-[11px]">
+                            {issuingComp?.name || '-'}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-mono font-bold text-rose-600">
+                            {formatCurrency(totalAmount)}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-mono font-bold text-emerald-600">
+                            {formatCurrency(paidAmount)}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-mono font-bold">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                              remainingAmount <= 0 
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                            }`}>
+                              {formatCurrency(remainingAmount)}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {/* Preview & Print A4 */}
+                              <button
+                                type="button"
+                                onClick={() => loadStatement(st.id, 'preview')}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#C59A55]/10 hover:bg-[#C59A55] text-[#C59A55] hover:text-white font-bold text-[11px] transition-colors"
+                                title="معاينة وطباعة كشف الحساب A4"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                                <span>معاينة وطباعة</span>
+                              </button>
+
+                              {/* Edit Statement */}
+                              <button
+                                type="button"
+                                onClick={() => loadStatement(st.id, 'editor')}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-[#202D3B] hover:bg-slate-100 transition-colors"
+                                title="تعديل بيانات الكشف والدفعات"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* WhatsApp Share */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  loadStatement(st.id, 'editor');
+                                  handleCopyWhatsApp();
+                                }}
+                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                title="نسخ ملخص كشف الحساب للواتساب"
+                              >
+                                <Share2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Delete Statement */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`هل أنت متأكد من حذف كشف الحساب (${st.statementNumber}) نهائياً؟`)) {
+                                    deleteQuickStatement(st.id);
+                                    if (recentlySavedId === st.id) setRecentlySavedId(null);
+                                    setToastMessage(`تم حذف كشف الحساب (${st.statementNumber}) بنجاح`);
+                                    setTimeout(() => setToastMessage(null), 3000);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                title="حذف كشف الحساب"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
         </div>
       )}
 
