@@ -112,6 +112,58 @@ function QuickStatementContent() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Intelligent project name extraction from payments if blank
+  const displayProjectName = useMemo(() => {
+    if (projectName && projectName.trim() && projectName.trim() !== 'بدون اسم محدد') {
+      return projectName.trim();
+    }
+    for (const p of payments) {
+      if (p.statement && p.statement.includes('مشروع')) {
+        const match = p.statement.match(/(مشروع\s+[^\(\)]+)/);
+        if (match && match[1]) {
+          return match[1].trim();
+        }
+      }
+    }
+    return projectCode ? `مشروع عقد رقم ${projectCode}` : 'عقد توريد وتنفيذ / مشروع تعاقدي';
+  }, [projectName, payments, projectCode]);
+
+  // Company logo determination: never show Zajel for another company
+  const isZajel = useMemo(() => {
+    const name = (activeCompany?.name || '').toLowerCase();
+    return name.includes('زاجل') || name.includes('zajel');
+  }, [activeCompany?.name]);
+
+  const hasCustomLogo = useMemo(() => {
+    const url = activeCompany?.logoUrl;
+    if (!url || typeof url !== 'string' || !url.trim()) return false;
+    if (url.includes('logo-zajel') && !isZajel) {
+      return false;
+    }
+    return true;
+  }, [activeCompany?.logoUrl, isZajel]);
+
+  const companyInitials = useMemo(() => {
+    const raw = activeCompany?.name || 'خبراء الخليج';
+    const clean = raw.replace(/^(مؤسسة|شركة|مكتب|مجموعة)\s+/, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0][0]} ${parts[1][0]}`;
+    }
+    return parts[0] ? parts[0].slice(0, 2) : 'خ خ';
+  }, [activeCompany?.name]);
+
+  const currentStatement = useMemo(() => {
+    return (quickStatements || []).find(s => s.id === currentId);
+  }, [quickStatements, currentId]);
+
+  const displayStatementNumber = currentStatement?.statementNumber || 'ST-PRJ-001';
+
+  const formatIBAN = (iban?: string) => {
+    if (!iban) return '';
+    return iban.replace(/(.{4})/g, '$1 ').trim();
+  };
+
   // Check URL params if customer pre-selected or print requested
   useEffect(() => {
     const custId = searchParams.get('customerId');
@@ -625,97 +677,99 @@ ${remainingText}
         </div>
       </div>
 
-      {/* KPI Overview Summary (Visible in Editor & Preview) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 print:grid-cols-4 print:gap-2">
-        {/* Card 1: إجمالي قيمة المشروع (مدين) */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-slate-500">إجمالي قيمة المشروع (مدين)</span>
-            <div className="text-xl font-bold text-rose-600 mt-0.5 font-mono">
-              {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 0 })}
-              <span className="text-[10px] font-normal text-slate-400 me-1 ms-1">ر.س</span>
+      {/* KPI Overview Summary (Visible in Editor tab only) */}
+      {activeTab === 'editor' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 print:hidden">
+          {/* Card 1: إجمالي قيمة المشروع (مدين) */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500">إجمالي قيمة المشروع (مدين)</span>
+              <div className="text-xl font-bold text-rose-600 mt-0.5 font-mono">
+                {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                <span className="text-[10px] font-normal text-slate-400 me-1 ms-1">ر.س</span>
+              </div>
+              <span className="text-[10px] text-slate-400">
+                {taxType === 'excluded' ? 'شامل الضريبة المضافة 15%' : taxType === 'included' ? 'شاملة الضريبة' : 'القيمة الصافية المتفق عليها'}
+              </span>
             </div>
-            <span className="text-[10px] text-slate-400">
-              {taxType === 'excluded' ? 'شامل الضريبة المضافة 15%' : taxType === 'included' ? 'شاملة الضريبة' : 'القيمة الصافية المتفق عليها'}
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-            <ArrowUp className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Card 2: إجمالي المدفوعات المسددة (دائن) */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-slate-500">إجمالي المسدد (دائن)</span>
-            <div className="text-xl font-bold text-emerald-600 mt-0.5 font-mono">
-              {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 0 })}
-              <span className="text-[10px] font-normal text-slate-400 me-1 ms-1">ر.س</span>
+            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <ArrowUp className="w-5 h-5" />
             </div>
-            <span className="text-[10px] text-slate-400">
-              إجمالي {payments.length} دفعات مستلمة
-            </span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <ArrowDown className="w-5 h-5" />
-          </div>
-        </div>
 
-        {/* Card 3: الرصيد المتبقي المستحق */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-semibold text-slate-500">الرصيد المتبقي</span>
-            <div className={`text-xl font-bold mt-0.5 font-mono ${
-              calculations.remainingBalance > 0 
-                ? 'text-amber-600' 
-                : calculations.remainingBalance === 0 
-                ? 'text-emerald-600' 
-                : 'text-blue-600'
-            }`}>
-              {Math.abs(calculations.remainingBalance).toLocaleString('en-US', { minimumFractionDigits: 0 })}
-              <span className="text-[10px] font-normal text-slate-400 me-1 ms-1">ر.س</span>
+          {/* Card 2: إجمالي المدفوعات المسددة (دائن) */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500">إجمالي المسدد (دائن)</span>
+              <div className="text-xl font-bold text-emerald-600 mt-0.5 font-mono">
+                {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                <span className="text-[10px] font-normal text-slate-400 me-1 ms-1">ر.س</span>
+              </div>
+              <span className="text-[10px] text-slate-400">
+                إجمالي {payments.length} دفعات مستلمة
+              </span>
             </div>
-            <span className="text-[10px] font-bold">
-              {calculations.remainingBalance > 0 
-                ? 'مستحق على العميل' 
-                : calculations.remainingBalance === 0 
-                ? 'خالص بالكامل (0.00)' 
-                : 'رصيد فائض لصالح العميل'}
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-[#C59A55]/15 text-[#C59A55] flex items-center justify-center shrink-0">
-            <Scale className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Card 4: نسبة الإنجاز المالي والتحصيل */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-500">نسبة التحصيل والسداد</span>
-            <span className="text-xs font-bold font-mono text-[#202D3B]">
-              {calculations.paidPercentage}%
-            </span>
-          </div>
-          
-          <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden my-1">
-            <div 
-              className={`h-full transition-all duration-500 ${
-                calculations.paidPercentage >= 100 
-                  ? 'bg-emerald-500' 
-                  : calculations.paidPercentage >= 50 
-                  ? 'bg-[#C59A55]' 
-                  : 'bg-amber-500'
-              }`}
-              style={{ width: `${calculations.paidPercentage}%` }}
-            />
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <ArrowDown className="w-5 h-5" />
+            </div>
           </div>
 
-          <div className="text-[10px] text-slate-400 flex items-center justify-between">
-            <span>مسدد: {calculations.totalPaid.toLocaleString()} ر.س</span>
-            <span>باقي: {Math.max(0, calculations.remainingBalance).toLocaleString()} ر.س</span>
+          {/* Card 3: الرصيد المتبقي المستحق */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-semibold text-slate-500">الرصيد المتبقي</span>
+              <div className={`text-xl font-bold mt-0.5 font-mono ${
+                calculations.remainingBalance > 0 
+                  ? 'text-amber-600' 
+                  : calculations.remainingBalance === 0 
+                  ? 'text-emerald-600' 
+                  : 'text-blue-600'
+              }`}>
+                {Math.abs(calculations.remainingBalance).toLocaleString('en-US', { minimumFractionDigits: 0 })}
+                <span className="text-[10px] font-normal text-slate-400 me-1 ms-1">ر.س</span>
+              </div>
+              <span className="text-[10px] font-bold">
+                {calculations.remainingBalance > 0 
+                  ? 'مستحق على العميل' 
+                  : calculations.remainingBalance === 0 
+                  ? 'خالص بالكامل (0.00)' 
+                  : 'رصيد فائض لصالح العميل'}
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-[#C59A55]/15 text-[#C59A55] flex items-center justify-center shrink-0">
+              <Scale className="w-5 h-5" />
+            </div>
+          </div>
+
+          {/* Card 4: نسبة الإنجاز المالي والتحصيل */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-500">نسبة التحصيل والسداد</span>
+              <span className="text-xs font-bold font-mono text-[#202D3B]">
+                {calculations.paidPercentage}%
+              </span>
+            </div>
+            
+            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden my-1">
+              <div 
+                className={`h-full transition-all duration-500 ${
+                  calculations.paidPercentage >= 100 
+                    ? 'bg-emerald-500' 
+                    : calculations.paidPercentage >= 50 
+                    ? 'bg-[#C59A55]' 
+                    : 'bg-amber-500'
+                }`}
+                style={{ width: `${calculations.paidPercentage}%` }}
+              />
+            </div>
+
+            <div className="text-[10px] text-slate-400 flex items-center justify-between">
+              <span>مسدد: {calculations.totalPaid.toLocaleString()} ر.س</span>
+              <span>باقي: {Math.max(0, calculations.remainingBalance).toLocaleString()} ر.س</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* =========================================================================
           TAB 1: DATA & PAYMENTS BUILDER / EDITOR
@@ -1332,113 +1386,222 @@ ${remainingText}
             </div>
           </div>
 
-          {/* Formal Printable Sheet (Matching Mockup 4 Standard) */}
-          <div className="bg-white p-6 sm:p-10 rounded-2xl border border-slate-200 shadow-sm print:p-0 print:border-none print:shadow-none print:rounded-none">
+          {/* Formal Printable Sheet (Executive Corporate Standard) */}
+          <div className="bg-white p-6 sm:p-10 rounded-2xl border border-slate-200/90 shadow-sm print:p-0 print:border-none print:shadow-none print:rounded-none max-w-4xl mx-auto">
             
+            {/* Top Royal Accent Line */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-[#202D3B] via-[#C59A55] to-[#202D3B] rounded-full mb-6 print:mb-4" />
+
             {/* Letterhead */}
-            <div className="flex items-start justify-between border-b-2 border-[#202D3B] pb-6 mb-6">
-              <div>
-                <span className="px-2.5 py-0.5 rounded-full bg-[#C59A55]/15 text-[#C59A55] text-[10px] font-bold tracking-wide block w-fit mb-1">
-                  كشف حساب مشروع رسمي
-                </span>
-                <h1 className="text-2xl font-bold text-[#202D3B]">كشف حساب مشروع</h1>
-                <p className="text-xs text-slate-500 font-mono mt-0.5 uppercase">
-                  PROJECT STATEMENT OF ACCOUNT
-                </p>
-                
-                <div className="mt-3 text-xs text-slate-700 space-y-1">
-                  <p>
-                    <span className="text-slate-400">العميل / الجهة: </span>
-                    <strong className="text-[#202D3B]">{customerName || 'عميل نقدي'}</strong>
-                    {customerPhone && <span className="text-slate-500 font-mono me-2 ms-2">({customerPhone})</span>}
+            <div className="flex items-start justify-between border-b-2 border-[#202D3B] pb-6 mb-6 gap-6">
+              {/* Right / Start Column: Statement Title & Reference */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#C59A55]/15 text-[#C59A55] text-[10px] font-bold tracking-wide">
+                    كشف حساب مشروع رسمي
+                  </span>
+                  <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-bold">
+                    {displayStatementNumber}
+                  </span>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black text-[#202D3B] tracking-tight">كشف حساب مشروع</h1>
+                  <p className="text-[11px] text-slate-500 font-mono tracking-wider uppercase mt-0.5">
+                    PROJECT STATEMENT OF ACCOUNT
                   </p>
-                  <p>
-                    <span className="text-slate-400">المشروع / العقد: </span>
-                    <strong className="text-[#202D3B]">{projectName || 'بدون اسم محدد'}</strong>
-                    {projectCode && <span className="text-slate-500 font-mono me-2 ms-2">[{projectCode}]</span>}
-                  </p>
-                  <p>
-                    <span className="text-slate-400">تاريخ بدء المشروع: </span>
-                    <span className="font-mono text-slate-600">{formatDate(startDate)}</span>
-                    <span className="text-slate-400 me-2 ms-2">| تاريخ الكشف: </span>
-                    <span className="font-mono text-slate-600">{formatDate(statementDate)}</span>
-                  </p>
-                  {customerTaxNumber && (
-                    <p>
-                      <span className="text-slate-400">الرقم الضريبي للعميل: </span>
-                      <span className="font-mono font-bold text-[#202D3B]">{customerTaxNumber}</span>
-                    </p>
-                  )}
+                </div>
+                <div className="text-xs text-slate-500 flex items-center gap-3 pt-1">
+                  <span>تاريخ إصدار الكشف: <strong className="font-mono text-slate-800">{formatDate(statementDate)}</strong></span>
+                  <span className="text-slate-300">|</span>
+                  <span>تاريخ بدء العمل: <strong className="font-mono text-slate-800">{formatDate(startDate)}</strong></span>
                 </div>
               </div>
 
-              {/* Company Logo and Official Info (Isolated Company Branding) */}
+              {/* Left / End Column: Issuing Company Branding & Details */}
               <div className="flex flex-col items-end text-end max-w-[50%]">
-                {/* Logo or Brand Emblem */}
-                {activeCompany?.logoUrl ? (
+                {/* Logo / Monogram */}
+                {hasCustomLogo ? (
                   <div className="relative group mb-2">
                     <img 
                       src={activeCompany.logoUrl} 
                       alt={activeCompany.name} 
-                      className="h-20 w-auto max-w-[220px] object-contain rounded-lg" 
+                      className="h-20 w-auto max-w-[200px] object-contain rounded-lg" 
                     />
                     <button
                       type="button"
                       onClick={() => logoFileInputRef.current?.click()}
-                      className="absolute inset-0 bg-slate-900/60 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold gap-1 print:hidden cursor-pointer"
+                      className="absolute inset-0 bg-[#202D3B]/70 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold gap-1 print:hidden cursor-pointer"
                     >
-                      <Upload className="w-3 h-3" />
+                      <Upload className="w-3.5 h-3.5 text-[#C59A55]" />
                       <span>تغيير الشعار</span>
                     </button>
                   </div>
-                ) : (activeCompany?.name || '').toLowerCase().includes('زاجل') || (activeCompany?.name || '').toLowerCase().includes('zajel') ? (
-                  <ZajelLogo variant="light" size="md" showText={false} />
+                ) : isZajel ? (
+                  <div className="mb-2">
+                    <ZajelLogo variant="light" size="md" showText={false} />
+                  </div>
                 ) : (
                   <div 
                     onClick={() => logoFileInputRef.current?.click()}
-                    className="w-16 h-16 rounded-2xl border-2 border-dashed border-[#C59A55]/40 bg-[#C59A55]/5 flex flex-col items-center justify-center text-[#C59A55] mb-2 cursor-pointer hover:bg-[#C59A55]/10 transition-colors print:border-solid print:border-[#202D3B]/20 print:bg-slate-50 group"
-                    title="انقر لرفع شعار المنشأة"
+                    className="w-20 h-20 rounded-2xl border-2 border-[#C59A55] bg-gradient-to-br from-[#202D3B] via-[#1c2936] to-[#15202B] p-2 flex flex-col items-center justify-center text-center shadow-xs cursor-pointer group mb-2 transition-transform hover:scale-105"
+                    title="انقر لرفع الشعار الخاص بالمنشأة"
                   >
-                    <Building2 className="w-7 h-7 text-[#C59A55]" />
-                    <span className="text-[9px] font-bold mt-1 text-[#202D3B] group-hover:text-[#C59A55] print:hidden">
-                      + أضف الشعار
+                    <div className="text-[#C59A55] font-black text-xl tracking-wider leading-none">
+                      {companyInitials}
+                    </div>
+                    <div className="w-8 h-0.5 bg-[#C59A55]/60 my-1 rounded-full" />
+                    <span className="text-[8px] font-bold text-slate-300 leading-tight block truncate max-w-[70px]">
+                      اعتماد رسمي
+                    </span>
+                    <span className="text-[7px] text-[#C59A55] group-hover:underline print:hidden mt-0.5">
+                      + رفع الشعار
                     </span>
                   </div>
                 )}
 
-                {/* Institution Details */}
-                <div className="mt-1 text-xs text-slate-600 space-y-0.5 text-end" dir="rtl">
-                  <h2 className="font-bold text-[#202D3B] text-base leading-tight">
+                {/* Company Details */}
+                <div className="space-y-0.5 text-xs text-slate-600">
+                  <h2 className="font-black text-[#202D3B] text-base leading-tight">
                     {activeCompany.name}
                   </h2>
-                  {activeCompany.crNumber && (
-                    <p className="text-[11px] text-slate-500">
-                      <span>س.ت: </span>
-                      <span className="font-mono font-bold text-[#202D3B]">{activeCompany.crNumber}</span>
-                      {activeCompany.taxNumber && (
-                        <>
-                          <span className="mx-1.5 text-slate-300">|</span>
-                          <span>الرقم الضريبي: </span>
-                          <span className="font-mono font-bold text-[#202D3B]">{activeCompany.taxNumber}</span>
-                        </>
-                      )}
-                    </p>
-                  )}
-                  <p className="text-[11px] text-slate-500">
-                    {activeCompany.phone && (
-                      <>
-                        <span className="font-mono">{activeCompany.phone}</span>
-                        {activeCompany.city && <span className="mx-1.5 text-slate-300">|</span>}
-                      </>
+                  <div className="text-[11px] text-slate-500 font-mono">
+                    {activeCompany.crNumber && (
+                      <span>س.ت: <strong className="text-[#202D3B]">{activeCompany.crNumber}</strong></span>
                     )}
-                    <span>{activeCompany.city || 'المملكة العربية السعودية'}</span>
-                  </p>
-                  {activeCompany.bankName && activeCompany.iban && (
-                    <p className="text-[10px] text-slate-400 font-mono">
-                      <span>{activeCompany.bankName}: </span>
-                      <span>{activeCompany.iban}</span>
-                    </p>
+                    {activeCompany.crNumber && activeCompany.taxNumber && (
+                      <span className="mx-1.5 text-slate-300">|</span>
+                    )}
+                    {activeCompany.taxNumber && (
+                      <span>الرقم الضريبي: <strong className="text-[#202D3B]">{activeCompany.taxNumber}</strong></span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    {activeCompany.city && <span>{activeCompany.city}</span>}
+                    {activeCompany.city && activeCompany.phone && <span className="mx-1.5 text-slate-300">|</span>}
+                    {activeCompany.phone && <span className="font-mono">هاتف: {activeCompany.phone}</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Customer & Project Details Card */}
+            <div className="bg-slate-50/80 border border-slate-200 rounded-xl p-4 mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              {/* Right / Start Column: Customer Details */}
+              <div className="space-y-1.5 border-b md:border-b-0 md:border-e border-slate-200/80 pb-3 md:pb-0 md:pe-4">
+                <div className="flex items-center gap-1.5 text-[#C59A55] text-[11px] font-bold">
+                  <User className="w-3.5 h-3.5" />
+                  <span>الطرف الثاني / العميل:</span>
+                </div>
+                <div className="text-sm font-bold text-[#202D3B]">
+                  {customerName || 'عميل نقدي'}
+                </div>
+                {customerPhone && (
+                  <div className="text-slate-500 font-mono text-[11px]">
+                    <span>رقم الهاتف: </span>
+                    <span className="font-bold text-slate-700">{customerPhone}</span>
+                  </div>
+                )}
+                {customerTaxNumber && (
+                  <div className="text-slate-500 font-mono text-[11px]">
+                    <span>الرقم الضريبي للعميل: </span>
+                    <span className="font-bold text-slate-700">{customerTaxNumber}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Left / End Column: Project & Contract Details */}
+              <div className="space-y-1.5 md:ps-2">
+                <div className="flex items-center gap-1.5 text-[#C59A55] text-[11px] font-bold">
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>بيانات المشروع والتعاقد:</span>
+                </div>
+                <div className="text-sm font-bold text-[#202D3B] flex items-center gap-2 flex-wrap">
+                  <span>{displayProjectName}</span>
+                  {projectCode && (
+                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-200/80 text-slate-700 font-semibold">
+                      [{projectCode}]
+                    </span>
                   )}
+                </div>
+                <div className="text-slate-500 text-[11px] flex items-center gap-3">
+                  <span>نوع الضريبة: <strong className="text-slate-700 font-semibold">{taxType === 'excluded' ? 'قيمة غير شاملة + 15% ضريبة' : taxType === 'included' ? 'قيمة شاملة ضريبة 15%' : 'صافي معفى / متفق عليه'}</strong></span>
+                </div>
+                <div className="text-slate-500 text-[11px]">
+                  <span>حالة الحساب التعاقدي: </span>
+                  <span className={`font-bold ${calculations.remainingBalance > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                    {calculations.remainingBalance > 0 ? 'جاري السداد (متبقي مستحقات)' : 'مسدد بالكامل وخالص'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Integrated Executive Financial Summary Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 border border-[#202D3B]/20 rounded-xl overflow-hidden mb-6 bg-white divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-slate-200 text-center">
+              {/* Box 1: Total Project Contract */}
+              <div className="p-3 bg-slate-50/50">
+                <span className="text-[10px] text-slate-500 font-bold block mb-1">
+                  إجمالي قيمة المشروع (مدين)
+                </span>
+                <div className="font-mono text-base font-bold text-rose-600 whitespace-nowrap">
+                  {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  <span className="text-[10px] font-sans font-normal text-slate-500 ms-1">ر.س</span>
+                </div>
+                <span className="text-[9px] text-slate-400 block mt-0.5">
+                  {taxType === 'excluded' ? 'شامل الضريبة 15%' : taxType === 'included' ? 'شاملة الضريبة' : 'صافي متفق عليه'}
+                </span>
+              </div>
+
+              {/* Box 2: Total Payments Received */}
+              <div className="p-3 bg-slate-50/50">
+                <span className="text-[10px] text-slate-500 font-bold block mb-1">
+                  إجمالي المسدد (دائن)
+                </span>
+                <div className="font-mono text-base font-bold text-emerald-600 whitespace-nowrap">
+                  {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  <span className="text-[10px] font-sans font-normal text-slate-500 ms-1">ر.س</span>
+                </div>
+                <span className="text-[9px] text-slate-400 block mt-0.5">
+                  إجمالي {payments.length} دفعات مستلمة
+                </span>
+              </div>
+
+              {/* Box 3: Remaining Balance */}
+              <div className={`p-3 ${calculations.remainingBalance > 0 ? 'bg-amber-50/40' : 'bg-emerald-50/30'}`}>
+                <span className="text-[10px] text-slate-500 font-bold block mb-1">
+                  صافي الرصيد المتبقي
+                </span>
+                <div className={`font-mono text-base font-bold whitespace-nowrap ${calculations.remainingBalance > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                  {calculations.remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  <span className="text-[10px] font-sans font-normal text-slate-500 ms-1">ر.س</span>
+                </div>
+                <span className="text-[9px] font-bold text-slate-600 block mt-0.5">
+                  {calculations.remainingBalance > 0 
+                    ? 'مستحق على العميل' 
+                    : calculations.remainingBalance === 0 
+                    ? 'خالص ومسدد بالكامل' 
+                    : 'رصيد دائن للعميل'}
+                </span>
+              </div>
+
+              {/* Box 4: Financial Progress */}
+              <div className="p-3 bg-slate-50/50">
+                <span className="text-[10px] text-slate-500 font-bold block mb-1">
+                  نسبة التحصيل والسداد
+                </span>
+                <div className="font-mono text-base font-bold text-[#202D3B]">
+                  %{calculations.paidPercentage}
+                </div>
+                <div className="w-24 bg-slate-200 h-1.5 rounded-full mx-auto mt-1 overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-300 ${
+                      calculations.paidPercentage >= 100 
+                        ? 'bg-emerald-500' 
+                        : calculations.paidPercentage >= 50 
+                        ? 'bg-[#C59A55]' 
+                        : 'bg-amber-500'
+                    }`}
+                    style={{ width: `${Math.min(100, calculations.paidPercentage)}%` }}
+                  />
                 </div>
               </div>
             </div>
@@ -1449,12 +1612,12 @@ ${remainingText}
                 <thead className="bg-[#202D3B] text-white font-bold">
                   <tr>
                     <th className="py-3 px-3 w-10 text-center">م</th>
-                    <th className="py-3 px-3">التاريخ</th>
-                    <th className="py-3 px-3">رقم المرجع</th>
-                    <th className="py-3 px-4">البيان والحركة</th>
-                    <th className="py-3 px-3 text-center">مدين (ر.س)</th>
-                    <th className="py-3 px-3 text-center">دائن (ر.س)</th>
-                    <th className="py-3 px-3 text-left">الرصيد المتبقي (ر.س)</th>
+                    <th className="py-3 px-3 w-28 text-center whitespace-nowrap">التاريخ</th>
+                    <th className="py-3 px-3 w-32 text-center whitespace-nowrap">رقم المرجع</th>
+                    <th className="py-3 px-4 min-w-[220px]">البيان والحركة</th>
+                    <th className="py-3 px-3 w-32 text-center whitespace-nowrap">مدين (ر.س)</th>
+                    <th className="py-3 px-3 w-32 text-center whitespace-nowrap">دائن (ر.س)</th>
+                    <th className="py-3 px-3 w-36 text-start whitespace-nowrap">الرصيد المتبقي (ر.س)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -1466,27 +1629,27 @@ ${remainingText}
                       <td className="py-3 px-3 text-center font-mono text-slate-400">
                         {row.seq}
                       </td>
-                      <td className="py-3 px-3 font-mono text-slate-600">
+                      <td className="py-3 px-3 text-center font-mono text-slate-600 whitespace-nowrap">
                         {formatDate(row.date)}
                       </td>
-                      <td className="py-3 px-3 font-mono font-bold text-[#202D3B]">
+                      <td className="py-3 px-3 text-center font-mono font-bold text-[#202D3B] whitespace-nowrap">
                         {row.reference}
                       </td>
                       <td className="py-3 px-4 text-slate-800">
-                        <span className="font-bold block">{row.statement}</span>
+                        <span className="font-bold block leading-relaxed">{row.statement}</span>
                         {row.paymentMethodLabel && (
-                          <span className="text-[10px] text-slate-400 block font-normal">
+                          <span className="text-[10px] text-slate-400 block font-normal mt-0.5">
                             طريقة التعامل: {row.paymentMethodLabel}
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-center font-mono font-bold text-rose-600">
+                      <td className="py-3 px-3 text-center font-mono font-bold text-rose-600 whitespace-nowrap">
                         {row.debit > 0 ? row.debit.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}
                       </td>
-                      <td className="py-3 px-3 text-center font-mono font-bold text-emerald-600">
+                      <td className="py-3 px-3 text-center font-mono font-bold text-emerald-600 whitespace-nowrap">
                         {row.credit > 0 ? row.credit.toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}
                       </td>
-                      <td className="py-3 px-3 text-left font-mono font-bold text-[#202D3B]">
+                      <td className="py-3 px-3 text-start font-mono font-bold text-[#202D3B] whitespace-nowrap">
                         {row.runningBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -1500,20 +1663,20 @@ ${remainingText}
                   )}
                 </tbody>
 
-                {/* Table Footer with Totals */}
-                <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300">
+                {/* Table Footer with Totals - Fixed No Wrapping */}
+                <tfoot className="bg-[#F8FAFC] font-bold border-t-2 border-[#202D3B]/20">
                   <tr>
-                    <td colSpan={4} className="py-3.5 px-4 text-start text-slate-800">
+                    <td colSpan={4} className="py-3.5 px-4 text-start text-[#202D3B] text-xs font-bold">
                       إجمالي الحساب وصافي الرصيد المتبقي:
                     </td>
-                    <td className="py-3.5 px-3 text-center font-mono text-rose-600">
-                      {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
+                    <td className="py-3.5 px-3 text-center font-mono text-xs sm:text-sm text-rose-600 whitespace-nowrap">
+                      {calculations.totalWithTax.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[10px] font-sans font-normal">ر.س</span>
                     </td>
-                    <td className="py-3.5 px-3 text-center font-mono text-emerald-600">
-                      {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
+                    <td className="py-3.5 px-3 text-center font-mono text-xs sm:text-sm text-emerald-600 whitespace-nowrap">
+                      {calculations.totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[10px] font-sans font-normal">ر.س</span>
                     </td>
-                    <td className="py-3.5 px-3 text-left font-mono text-base text-[#C59A55]">
-                      {calculations.remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س
+                    <td className="py-3.5 px-3 text-start font-mono text-sm sm:text-base text-[#C59A55] whitespace-nowrap">
+                      {calculations.remainingBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[10px] font-sans font-normal text-slate-500">ر.س</span>
                     </td>
                   </tr>
                 </tfoot>
@@ -1521,13 +1684,15 @@ ${remainingText}
             </div>
 
             {/* Tafqeet & Closing Balance Details */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs mb-8">
+            <div className="bg-gradient-to-r from-amber-50/40 via-slate-50 to-amber-50/40 p-4 rounded-xl border border-amber-200/70 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs mb-6">
               <div>
-                <span className="text-slate-400 block mb-0.5">صافي الرصيد المتبقي كتابةً:</span>
-                <span className="font-bold text-[#202D3B] text-sm">
-                  {tafqeetArabic(Math.abs(calculations.remainingBalance))}
+                <span className="text-slate-400 block text-[11px] font-semibold mb-0.5">
+                  إقرار وتفقيط صافي الرصيد المتبقي كتابةً:
                 </span>
-                <span className="text-slate-500 me-2 ms-2 font-semibold">
+                <span className="font-bold text-[#202D3B] text-sm tracking-wide">
+                  « {tafqeetArabic(Math.abs(calculations.remainingBalance))} »
+                </span>
+                <span className="text-slate-600 me-2 ms-2 font-bold text-[11px]">
                   ({calculations.remainingBalance > 0 
                     ? 'مستحق على العميل لصالح المؤسسة' 
                     : calculations.remainingBalance < 0 
@@ -1536,41 +1701,95 @@ ${remainingText}
                 </span>
               </div>
 
-              <div className="text-start sm:text-end shrink-0">
-                <div className="text-[11px] text-slate-400">تاريخ طباعة الكشف:</div>
-                <div className="font-mono text-slate-600">{new Date().toISOString().split('T')[0]}</div>
+              <div className="text-start sm:text-end shrink-0 border-s sm:border-s-0 border-slate-200 ps-3 sm:ps-0">
+                <div className="text-[10px] text-slate-400">تاريخ وتوقيت إصدار الكشف:</div>
+                <div className="font-mono text-xs font-bold text-slate-700">{formatDate(statementDate)}</div>
               </div>
             </div>
 
-            {/* Notes & Bank Details */}
-            {(notes || terms || activeCompany.iban) && (
-              <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200 text-xs space-y-1.5 mb-8">
-                {notes && (
-                  <p><span className="font-bold text-slate-700">ملاحظات: </span><span className="text-slate-600">{notes}</span></p>
-                )}
-                {terms && (
-                  <p><span className="font-bold text-slate-700">شروط السداد: </span><span className="text-slate-600">{terms}</span></p>
-                )}
-                {activeCompany.iban && (
-                  <p className="font-mono text-[11px] text-slate-600 pt-1 border-t border-slate-200">
-                    <span className="font-bold font-sans text-slate-700">بيانات التحويل: </span>
-                    {activeCompany.bankName || 'مصرف الراجحي'} | الآيبان: {activeCompany.iban} | اسم الحساب: {activeCompany.accountHolder || activeCompany.name}
-                  </p>
-                )}
+            {/* Notes & Bank Details (2 Columns) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              {/* Notes & Terms */}
+              <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200 text-xs space-y-2">
+                <div className="font-bold text-[#202D3B] flex items-center gap-1.5 pb-1 border-b border-slate-200/60">
+                  <FileText className="w-3.5 h-3.5 text-[#C59A55]" />
+                  <span>ملاحظات وشروط السداد:</span>
+                </div>
+                <p className="text-slate-600 leading-relaxed">
+                  <strong className="text-slate-700">ملاحظات: </strong>
+                  {notes || 'كشف حساب مشروع مستقل يوضح الدفعات المستلمة والمبلغ المتبقي.'}
+                </p>
+                <p className="text-slate-600 leading-relaxed">
+                  <strong className="text-slate-700">شروط السداد: </strong>
+                  {terms || 'يرجى سداد الدفعة المتبقية فور استكمال مراحل العمل المتفق عليها.'}
+                </p>
               </div>
-            )}
 
-            {/* Formal Signature Lines */}
-            <div className="grid grid-cols-2 gap-8 text-center text-xs pt-8 border-t border-slate-200">
-              <div>
-                <div className="font-bold text-[#202D3B] mb-12">المحاسب المسؤول / الإدارة المالية</div>
-                <div className="w-36 border-b border-dashed border-slate-400 mx-auto" />
-                <div className="text-[11px] text-slate-400 mt-1">التوقيع والاعتماد</div>
+              {/* Official Bank Account for Wire Transfer */}
+              <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200 text-xs space-y-2">
+                <div className="font-bold text-[#202D3B] flex items-center gap-1.5 pb-1 border-b border-slate-200/60">
+                  <Building2 className="w-3.5 h-3.5 text-[#C59A55]" />
+                  <span>بيانات التحويل البنكي المعتمد:</span>
+                </div>
+                <div className="space-y-1 text-[11px] text-slate-600">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">المصرف المعتمد:</span>
+                    <strong className="text-slate-800">{activeCompany.bankName || 'مصرف الراجحي'}</strong>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">اسم المستفيد:</span>
+                    <strong className="text-slate-800">{activeCompany.accountHolder || activeCompany.name}</strong>
+                  </div>
+                  {activeCompany.iban && (
+                    <div className="pt-1 border-t border-slate-200/60">
+                      <span className="text-slate-400 block text-[10px] mb-0.5">رقم الآيبان الدولي (IBAN):</span>
+                      <div className="font-mono font-bold text-xs text-[#202D3B] bg-white p-1.5 rounded border border-slate-200 text-center tracking-wider" dir="ltr">
+                        {formatIBAN(activeCompany.iban)}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <div className="font-bold text-[#202D3B] mb-12">مصادقة واعتماد العميل</div>
-                <div className="w-36 border-b border-dashed border-slate-400 mx-auto" />
-                <div className="text-[11px] text-slate-400 mt-1">ختم وتوقيع المفوض</div>
+            </div>
+
+            {/* Executive Authentication & Signatures Block */}
+            <div className="grid grid-cols-2 gap-8 text-center text-xs pt-8 border-t-2 border-slate-200">
+              {/* First Party (Contractor) */}
+              <div className="flex flex-col items-center">
+                <div className="font-bold text-[#202D3B] text-xs">
+                  المسؤول المالي / اعتماد المنشأة
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                  {activeCompany.name}
+                </div>
+
+                {/* Circular Stamp Space */}
+                <div className="my-4 w-24 h-24 rounded-full border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-300 gap-1 bg-slate-50/50">
+                  <CheckCircle2 className="w-5 h-5 text-slate-300" />
+                  <span className="text-[8px] font-bold">[ موضع الختم الرسمي ]</span>
+                </div>
+
+                <div className="w-48 border-b border-slate-400 mb-1" />
+                <div className="text-[10px] text-slate-400 font-semibold">التوقيع والاعتماد الرسمي</div>
+              </div>
+
+              {/* Second Party (Customer) */}
+              <div className="flex flex-col items-center">
+                <div className="font-bold text-[#202D3B] text-xs">
+                  مصادقة واعتماد العميل (الطرف الثاني)
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5 font-medium">
+                  {customerName || 'المفوض بالاعتماد'}
+                </div>
+
+                {/* Circular Stamp Space */}
+                <div className="my-4 w-24 h-24 rounded-full border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-300 gap-1 bg-slate-50/50">
+                  <CheckCircle2 className="w-5 h-5 text-slate-300" />
+                  <span className="text-[8px] font-bold">[ ختم وتصديق العميل ]</span>
+                </div>
+
+                <div className="w-48 border-b border-slate-400 mb-1" />
+                <div className="text-[10px] text-slate-400 font-semibold">اسم وتوقيع المفوض بالاستلام</div>
               </div>
             </div>
 
