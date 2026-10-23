@@ -22,6 +22,7 @@ function QuickStatementContent() {
   const searchParams = useSearchParams();
   const { 
     customers, 
+    addCustomer,
     settings, 
     companies,
     activeCompanyId,
@@ -36,6 +37,17 @@ function QuickStatementContent() {
 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(activeCompanyId || companies?.[0]?.id || '');
   const [editingModalCompany, setEditingModalCompany] = useState<Company | null>(null);
+
+  // Success modal feedback state
+  const [saveSuccessModal, setSaveSuccessModal] = useState<{
+    isOpen: boolean;
+    statementNumber: string;
+    customerName: string;
+    projectName: string;
+    totalAmount: number;
+    remainingBalance: number;
+    statementId: string;
+  } | null>(null);
 
   // Sync selectedCompanyId when activeCompanyId changes
   useEffect(() => {
@@ -116,7 +128,8 @@ function QuickStatementContent() {
 
     const editId = searchParams.get('id');
     if (editId) {
-      loadStatement(editId);
+      const requestedTab = (searchParams.get('tab') as 'editor' | 'preview') || 'editor';
+      loadStatement(editId, requestedTab);
     }
   }, [searchParams, customers]);
 
@@ -269,53 +282,104 @@ function QuickStatementContent() {
     setPayments(payments.filter(p => p.id !== id));
   };
 
-  // Save statement to store
-  const handleSaveStatement = () => {
-    if (!customerName.trim()) {
-      alert('يرجى إدخال اسم العميل أولاً.');
-      return;
+  // Save statement to store with robust fallbacks and seamless registration
+  const handleSaveStatement = (autoPreview: boolean = true) => {
+    const finalCustomerName = customerName.trim() || 'عميل نقدي';
+    
+    // Automatically register customer in customers directory if not already there
+    let linkedCustomerId = selectedCustomerId;
+    if (!linkedCustomerId && customerName.trim() && customerName.trim() !== 'عميل نقدي') {
+      const existing = (customers || []).find(
+        (c) => c.name.trim().toLowerCase() === customerName.trim().toLowerCase()
+      );
+      if (existing) {
+        linkedCustomerId = existing.id;
+        setSelectedCustomerId(existing.id);
+      } else {
+        try {
+          linkedCustomerId = addCustomer({
+            companyId: activeCompany?.id || activeCompanyId,
+            name: customerName.trim(),
+            type: customerTaxNumber ? 'business' : 'individual',
+            phone: customerPhone.trim() || '',
+            taxNumber: customerTaxNumber.trim() || undefined,
+            address: customerAddress.trim() || undefined,
+            status: 'active',
+            openingBalance: 0,
+            openingBalanceType: 'debit',
+            openingBalanceDate: statementDate,
+          });
+          setSelectedCustomerId(linkedCustomerId);
+        } catch (e) {
+          console.error('Error auto-creating customer:', e);
+        }
+      }
     }
-    if (!projectTotal || Number(projectTotal) <= 0) {
-      alert('يرجى إدخال المبلغ الإجمالي للمشروع.');
-      return;
-    }
+
+    const rawTotal = Number(projectTotal);
+    const calculatedSumOfPayments = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const finalProjectTotal = !isNaN(rawTotal) && rawTotal > 0 
+      ? rawTotal 
+      : (calculatedSumOfPayments > 0 ? calculatedSumOfPayments : 0);
 
     const payload = {
       companyId: activeCompany?.id,
       date: statementDate,
-      customerId: selectedCustomerId || undefined,
-      customerName: customerName.trim(),
+      customerId: linkedCustomerId || undefined,
+      customerName: finalCustomerName,
       customerPhone: customerPhone.trim(),
       customerTaxNumber: customerTaxNumber.trim(),
       customerAddress: customerAddress.trim(),
-      projectName: projectName.trim() || 'مشروع بدون اسم',
+      projectName: projectName.trim() || 'مشروع تعاقدي بدون اسم',
       projectCode: projectCode.trim() || undefined,
       startDate: startDate || statementDate,
       endDate: endDate || undefined,
-      projectTotal: Number(projectTotal),
+      projectTotal: finalProjectTotal,
       taxType,
-      subtotal: calculations.subtotal,
+      subtotal: calculations.subtotal || finalProjectTotal,
       taxAmount: calculations.taxAmount,
-      totalWithTax: calculations.totalWithTax,
+      totalWithTax: calculations.totalWithTax || finalProjectTotal,
       payments,
       notes,
       terms,
     };
 
+    let savedId = currentId;
+    let savedNum = '';
+
     if (currentId) {
       updateQuickStatement(currentId, payload);
-      setToastMessage('تم تحديث كشف الحساب بنجاح!');
+      const existing = (quickStatements || []).find(s => s.id === currentId);
+      savedNum = existing?.statementNumber || 'ST-PRJ';
+      setToastMessage(`تم تحديث كشف الحساب (${savedNum}) بنجاح!`);
     } else {
-      const newId = addQuickStatement(payload);
-      setCurrentId(newId);
-      setToastMessage('تم حفظ كشف الحساب في سجلك بنجاح!');
+      savedId = addQuickStatement(payload);
+      setCurrentId(savedId);
+      const existingCount = quickStatements?.length || 0;
+      savedNum = `ST-PRJ-${String(existingCount + 1).padStart(3, '0')}`;
+      setToastMessage(`تم حفظ كشف الحساب (${savedNum}) في السجل بنجاح!`);
+    }
+
+    // Set success modal info
+    setSaveSuccessModal({
+      isOpen: true,
+      statementId: savedId!,
+      statementNumber: savedNum,
+      customerName: finalCustomerName,
+      projectName: projectName.trim() || 'مشروع تعاقدي',
+      totalAmount: calculations.totalWithTax || finalProjectTotal,
+      remainingBalance: calculations.remainingBalance,
+    });
+
+    if (autoPreview) {
+      setActiveTab('preview');
     }
 
     setTimeout(() => setToastMessage(null), 4000);
   };
 
   // Load an existing statement from history
-  const loadStatement = (id: string) => {
+  const loadStatement = (id: string, initialTab: 'editor' | 'preview' = 'editor') => {
     const st = quickStatements.find(s => s.id === id);
     if (!st) return;
     setCurrentId(st.id);
@@ -334,7 +398,11 @@ function QuickStatementContent() {
     setPayments(st.payments && st.payments.length > 0 ? st.payments : []);
     setNotes(st.notes || '');
     setTerms(st.terms || '');
-    setActiveTab('editor');
+    if (st.companyId) {
+      setSelectedCompanyId(st.companyId);
+      setActiveCompany(st.companyId);
+    }
+    setActiveTab(initialTab);
     setToastMessage(`تم تحميل كشف الحساب: ${st.statementNumber}`);
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -390,6 +458,90 @@ ${remainingText}
         <div className="fixed top-20 start-1/2 -translate-x-1/2 z-50 bg-[#202D3B] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold border border-[#C59A55]/40 animate-in fade-in slide-in-from-top-4 duration-300">
           <CheckCircle2 className="w-4 h-4 text-[#C59A55]" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Save Success Confirmation Modal */}
+      {saveSuccessModal?.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 print:hidden animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+
+            <div>
+              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-mono text-xs font-bold inline-block mb-1.5">
+                {saveSuccessModal.statementNumber}
+              </span>
+              <h3 className="text-lg font-bold text-[#202D3B]">
+                تم حفظ كشف الحساب بنجاح!
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                تم تسجيل كشف الحساب للعميل «{saveSuccessModal.customerName}» وحفظه في سجل كشوف المشاريع
+              </p>
+            </div>
+
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 text-xs grid grid-cols-2 gap-2 text-start font-medium">
+              <div>
+                <span className="text-slate-400 block text-[11px]">المشروع:</span>
+                <span className="text-[#202D3B] font-bold truncate block">{saveSuccessModal.projectName}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">إجمالي المشروع:</span>
+                <span className="text-[#202D3B] font-bold font-mono">{formatCurrency(saveSuccessModal.totalAmount)}</span>
+              </div>
+              <div className="col-span-2 pt-1 border-t border-slate-200/60 flex items-center justify-between">
+                <span className="text-slate-500 text-[11px]">الرصيد المتبقي المستحق:</span>
+                <span className="font-bold font-mono text-rose-600">{formatCurrency(saveSuccessModal.remainingBalance)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSaveSuccessModal(null);
+                  setActiveTab('preview');
+                }}
+                className="w-full py-2.5 rounded-xl bg-[#202D3B] hover:bg-[#15202B] text-white text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-[#C59A55]" />
+                <span>معاينة كشف الحساب للطباعة (A4)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSaveSuccessModal(null);
+                  router.push('/customers');
+                }}
+                className="w-full py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-2"
+              >
+                <User className="w-4 h-4 text-[#C59A55]" />
+                <span>الذهاب إلى قائمة العملاء والكشوفات</span>
+              </button>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaveSuccessModal(null);
+                    handleResetNew();
+                  }}
+                  className="flex-1 py-2 rounded-xl text-slate-500 hover:text-slate-800 text-[11px] font-bold"
+                >
+                  + إنشاء كشف حساب جديد
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSaveSuccessModal(null)}
+                  className="flex-1 py-2 rounded-xl text-slate-500 hover:text-slate-800 text-[11px] font-bold"
+                >
+                  إغلاق ومتابعة التعديل
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1054,6 +1206,43 @@ ${remainingText}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[#202D3B] focus:border-[#C59A55] outline-none"
                 placeholder="شروط السداد والحساب البنكي..."
               />
+            </div>
+          </div>
+
+          {/* Bottom Floating Action Bar for Easy Saving & Preview */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 sticky bottom-4 z-30">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-[#C59A55] flex items-center justify-center font-bold shrink-0">
+                <Scale className="w-4 h-4" />
+              </div>
+              <div className="text-start">
+                <p className="text-xs font-bold text-[#202D3B]">
+                  {customerName.trim() ? `كشف حساب: ${customerName}` : 'كشف حساب مشروع سريع (جاهز للحفظ)'}
+                </p>
+                <p className="text-[11px] text-slate-500 font-mono">
+                  الإجمالي: {formatCurrency(calculations.totalWithTax || Number(projectTotal) || 0)} | المسدد: {formatCurrency(calculations.totalPaid)} | المتبقي: {formatCurrency(calculations.remainingBalance)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={() => handleSaveStatement(false)}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+              >
+                <Save className="w-4 h-4 text-[#C59A55]" />
+                <span>حفظ في السجل</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSaveStatement(true)}
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-[#202D3B] hover:bg-[#15202B] text-white text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 className="w-4 h-4 text-[#C59A55]" />
+                <span>حفظ والانتقال للمعاينة والطباعة</span>
+              </button>
             </div>
           </div>
 
