@@ -8,6 +8,9 @@ const nextConfig: any = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    agentUpgrade: "security",
+  },
 };
 
 export default nextConfig;
