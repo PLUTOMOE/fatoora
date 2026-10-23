@@ -2,18 +2,20 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   Bell, Menu, Sparkles, RefreshCw, CheckCircle2, 
   UserCheck, Shield, ChevronDown, Building2, 
-  Sun, Moon, Trash2, Plus, AlertCircle 
+  Sun, Moon, Trash2, Plus, AlertCircle, LogOut 
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useZajelStore } from '@/store/zajelStore';
 import { CompanySwitcherModal } from '@/components/shared/CompanySwitcherModal';
+import { createClient } from '@/lib/supabase/client';
 
 export function TopBar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useStore();
   const { 
     user, 
@@ -70,6 +72,18 @@ export function TopBar() {
       setToastMessage('تم حذف كافة البيانات بنجاح والبدء ببيانات نظيفة!');
       setTimeout(() => setToastMessage(null), 3000);
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+    document.cookie = "zajel_demo_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    router.push('/login');
+    router.refresh();
   };
 
   const isLight = themeMode === 'light';
@@ -237,9 +251,31 @@ export function TopBar() {
                   <span>مستخدم عرض (اطلاع وطباعة)</span>
                   {user.role === 'viewer' && <CheckCircle2 className="w-3.5 h-3.5" />}
                 </button>
+
+                <div className="my-1.5 border-t border-slate-100" />
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full text-right px-2.5 py-2 text-xs rounded-xl flex items-center gap-2 hover:bg-rose-50 text-rose-600 font-bold transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5 shrink-0" />
+                  <span>تسجيل الخروج</span>
+                </button>
               </div>
             )}
           </div>
+
+          {/* Quick Standalone Logout Button */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 text-xs font-semibold transition-colors shrink-0"
+            title="تسجيل الخروج من النظام"
+          >
+            <LogOut className="w-4 h-4 text-rose-500" />
+            <span className="hidden md:inline">خروج</span>
+          </button>
 
         </div>
 

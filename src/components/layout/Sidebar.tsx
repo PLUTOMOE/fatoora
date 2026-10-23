@@ -2,23 +2,37 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   Home, ScrollText, Receipt, Users, 
   Package, ArrowDownLeft, ArrowUpRight, Settings, 
-  X, ChevronLeft, ArrowRightLeft, ChevronDown, FileSpreadsheet 
+  X, ChevronLeft, ArrowRightLeft, ChevronDown, FileSpreadsheet, LogOut 
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useZajelStore } from '@/store/zajelStore';
 import { ZajelLogo } from '@/components/shared/ZajelLogo';
 import { CompanySwitcherModal } from '@/components/shared/CompanySwitcherModal';
+import { createClient } from '@/lib/supabase/client';
 
 export function Sidebar() {
+  const router = useRouter();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useStore();
   const { themeMode, settings, getActiveCompany } = useZajelStore();
   const pathname = usePathname();
   const activeCompany = getActiveCompany();
   const [showCompanyModal, setShowCompanyModal] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+    document.cookie = "zajel_demo_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    router.push('/login');
+    router.refresh();
+  };
 
   const navItems = [
     { label: 'الرئيسية', href: '/', icon: Home },
@@ -137,14 +151,30 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Bottom subtle watermark */}
-        <div className={`p-3 border-t text-center ${
+        {/* Bottom subtle watermark & Logout */}
+        <div className={`p-3 border-t text-center space-y-2.5 ${
           isLight ? 'border-slate-200 bg-slate-50/50' : 'border-slate-700/40'
         }`}>
-          <p className={`text-[11px] font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
-            {activeCompany?.name || settings.name}
-          </p>
-          <p className="text-[10px] text-slate-400">إصدار الشركات v3.0</p>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+              isLight
+                ? 'text-rose-600 bg-rose-50/70 hover:bg-rose-100 border-rose-200 shadow-2xs'
+                : 'text-rose-400 bg-rose-950/30 hover:bg-rose-900/40 border-rose-900/50 shadow-2xs'
+            }`}
+            title="تسجيل الخروج من الحساب"
+          >
+            <LogOut className="w-3.5 h-3.5 shrink-0" />
+            <span>تسجيل الخروج</span>
+          </button>
+
+          <div>
+            <p className={`text-[11px] font-semibold ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+              {activeCompany?.name || settings.name}
+            </p>
+            <p className="text-[10px] text-slate-400">إصدار الشركات v3.0</p>
+          </div>
         </div>
       </aside>
 
