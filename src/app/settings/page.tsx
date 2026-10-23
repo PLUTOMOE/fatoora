@@ -290,19 +290,31 @@ function SettingsContent() {
                           </div>
                         </div>
 
-                        {!isActive && (
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
-                            onClick={() => {
-                              setActiveCompany(comp.id);
-                              setSavedNotice(`تم التبديل إلى منشأة «${comp.name}» بنجاح!`);
-                              setTimeout(() => setSavedNotice(null), 2500);
-                            }}
-                            className="px-3 py-1.5 rounded-xl border border-[#C59A55] text-[#C59A55] hover:bg-[#C59A55] hover:text-white font-bold text-xs transition-colors shrink-0"
+                            onClick={() => setEditingCompany(comp)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#C59A55] hover:bg-[#B38944] text-white font-bold text-xs shadow-xs transition-all"
+                            title="تعديل كافة بيانات هذه المؤسسة"
                           >
-                            تفعيل هذه الشركة
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>تعديل البيانات</span>
                           </button>
-                        )}
+
+                          {!isActive && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveCompany(comp.id);
+                                setSavedNotice(`تم التبديل إلى منشأة «${comp.name}» بنجاح!`);
+                                setTimeout(() => setSavedNotice(null), 2500);
+                              }}
+                              className="px-3 py-1.5 rounded-xl border border-slate-300 text-slate-700 hover:border-[#C59A55] hover:text-[#C59A55] font-bold text-xs transition-colors shrink-0"
+                            >
+                              تفعيل هذه الشركة
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 gap-2 text-[11px] text-slate-600">
@@ -313,31 +325,21 @@ function SettingsContent() {
                       </div>
 
                       <div className="mt-4 flex items-center justify-between text-[11px] pt-3 border-t border-slate-100">
-                        <span className="text-slate-500 truncate max-w-[180px]">
+                        <span className="text-slate-500 truncate max-w-[200px]">
                           {comp.bankName ? `${comp.bankName} (${comp.iban ? comp.iban.slice(-6) : ''}...)` : 'لا يوجد حساب بنكي'}
                         </span>
                         
-                        <div className="flex items-center gap-2">
+                        {companies.length > 1 && !comp.isDefault && (
                           <button
                             type="button"
-                            onClick={() => setEditingCompany(comp)}
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#C59A55]/10 hover:bg-[#C59A55] text-[#C59A55] hover:text-white font-bold transition-colors"
+                            onClick={() => handleDeleteComp(comp.id, comp.name)}
+                            className="text-rose-500 hover:text-rose-700 flex items-center gap-1 font-bold p-1 transition-colors"
+                            title="حذف الشركة"
                           >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            <span>تعديل البيانات</span>
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>حذف المنشأة</span>
                           </button>
-
-                          {companies.length > 1 && !comp.isDefault && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteComp(comp.id, comp.name)}
-                              className="text-rose-500 hover:text-rose-700 flex items-center gap-1 font-bold p-1"
-                              title="حذف الشركة"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </div>
                   );
